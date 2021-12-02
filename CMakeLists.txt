@@ -4,25 +4,26 @@ project(bhd_vdf)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS "-flto -fvisibility=hidden")
+set(CMAKE_CXX_FLAGS "-flto -fvisibility=hidden -O3 -fno-PIE")
 
 set(CMAKE_MODULE_PATH
     ${CMAKE_CURRENT_LIST_DIR}/src/chiavdf/cmake
     ${CMAKE_MODULE_PATH}
 )
 
+add_definitions(-DVDF_MODE=0 -DFAST_MACHINE=1)
 
 enable_language(ASM)
 
 find_package(GMP REQUIRED)
 find_package(GMPXX REQUIRED)
 
-set(asm_compiled_src build/avx2_asm_compiled.s)
+set(ASM_COMPILED_SRC build/avx2_asm_compiled.s)
 add_custom_target(asm_compiled DEPENDS build/avx2_asm_compiled.s)
 
 file(GLOB vdf_src
     src/bhd_vdf.cpp
-    src/chiavdf/compile_asm.c
+    src/vdf_session.cpp
     ${ASM_COMPILED_SRC}
     )
 
