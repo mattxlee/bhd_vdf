@@ -6,13 +6,19 @@
 
 #include "callback.h"
 
+#include "create_discriminant.h"
+
 namespace vdf
 {
 
-Session::Session(std::vector<char> disc, std::vector<uint8_t> initial_form)
-    : disc_(std::move(disc))
-    , initial_form_(std::move(initial_form))
+Session::Session(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form)
+    : challenge_(std::move(challenge))
+      , discriminant_size_bits_(discriminant_size_bits)
+      , initial_form_(std::move(initial_form))
 {
+    integer D = CreateDiscriminant(const_cast<std::vector<uint8_t>&>(challenge_), discriminant_size_bits_);
+    disc_ = D.to_string();
+
     fesetround(FE_TOWARDZERO);
 }
 

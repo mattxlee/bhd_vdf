@@ -12,7 +12,10 @@ namespace vdf
 
 class Session
 {
-    std::vector<char> disc_;
+    std::vector<uint8_t> challenge_;
+    int discriminant_size_bits_;
+
+    std::string disc_;
     std::vector<uint8_t> initial_form_;
 
     std::atomic<bool> stopped_;
@@ -25,7 +28,7 @@ class Session
     void CreateAndWriteProofOneWeso(uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso);
 
 public:
-    Session(std::vector<char> disc, std::vector<uint8_t> initial_form);
+    Session(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form);
 
     ~Session();
 
