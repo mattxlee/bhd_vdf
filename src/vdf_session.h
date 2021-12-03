@@ -15,7 +15,7 @@ class Session
     std::vector<uint8_t> challenge_;
     int discriminant_size_bits_;
 
-    std::string disc_;
+    integer D_;
     std::vector<uint8_t> initial_form_;
 
     std::atomic<bool> stopped_;

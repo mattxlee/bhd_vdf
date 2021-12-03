@@ -13,11 +13,10 @@ namespace vdf
 
 Session::Session(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form)
     : challenge_(std::move(challenge))
-      , discriminant_size_bits_(discriminant_size_bits)
-      , initial_form_(std::move(initial_form))
+    , discriminant_size_bits_(discriminant_size_bits)
+    , initial_form_(std::move(initial_form))
 {
-    integer D = CreateDiscriminant(const_cast<std::vector<uint8_t>&>(challenge_), discriminant_size_bits_);
-    disc_ = D.to_string();
+    D_ = CreateDiscriminant(const_cast<std::vector<uint8_t>&>(challenge_), discriminant_size_bits_);
 
     fesetround(FE_TOWARDZERO);
 }
@@ -177,16 +176,15 @@ Session::~Session() { }
 void Session::Run(uint64_t iter)
 {
     try {
-        integer D(disc_.data());
-        integer L = root(-D, 4);
-        spdlog::info("Discriminant = {}", to_string(D.impl));
-        form f = DeserializeForm(D, initial_form_.data(), initial_form_.size());
-        auto weso = std::make_unique<OneWesolowskiCallback>(D, f, iter);
+        integer L = root(-D_, 4);
+        spdlog::info("Discriminant = {}", to_string(D_.impl));
+        form f = DeserializeForm(D_, initial_form_.data(), initial_form_.size());
+        auto weso = std::make_unique<OneWesolowskiCallback>(D_, f, iter);
         FastStorage* fast_storage = NULL;
         stopped_ = false;
         // Starting the calculation
-        std::thread vdf_worker(&Session::RepeatedSquare, this, f, std::ref(D), std::ref(L), weso.get(), fast_storage);
-        std::thread th_prover(&Session::CreateAndWriteProofOneWeso, this, iter, std::ref(D), f, weso.get());
+        std::thread vdf_worker(&Session::RepeatedSquare, this, f, std::ref(D_), std::ref(L), weso.get(), fast_storage);
+        std::thread th_prover(&Session::CreateAndWriteProofOneWeso, this, iter, std::ref(D_), f, weso.get());
         // Calculation is finished
         stopped_ = true;
         vdf_worker.join();
