@@ -1,5 +1,5 @@
-#ifndef VDF_SESSION_H
-#define VDF_SESSION_H
+#ifndef VDF_COMPUTER_H
+#define VDF_COMPUTER_H
 
 #include <atomic>
 #include <vector>
@@ -10,7 +10,7 @@
 namespace vdf
 {
 
-class Session
+class Computer
 {
     std::vector<uint8_t> challenge_;
     int discriminant_size_bits_;
@@ -28,9 +28,9 @@ class Session
     void CreateAndWriteProofOneWeso(uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso);
 
 public:
-    Session(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form);
+    Computer(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form);
 
-    ~Session();
+    ~Computer();
 
     void Run(uint64_t iters);
 

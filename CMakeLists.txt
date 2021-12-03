@@ -23,7 +23,7 @@ add_custom_target(asm_compiled DEPENDS build/avx2_asm_compiled.s)
 
 file(GLOB vdf_src
     src/bhd_vdf.cpp
-    src/vdf_session.cpp
+    src/vdf_computer.cpp
     ${ASM_COMPILED_SRC}
     )
 

@@ -1,4 +1,4 @@
-#include "vdf_session.h"
+#include "vdf_computer.h"
 
 #include <thread>
 
@@ -11,7 +11,7 @@
 namespace vdf
 {
 
-Session::Session(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form)
+Computer::Computer(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form)
     : challenge_(std::move(challenge))
     , discriminant_size_bits_(discriminant_size_bits)
     , initial_form_(std::move(initial_form))
@@ -22,7 +22,7 @@ Session::Session(std::vector<uint8_t> challenge, int discriminant_size_bits, std
 }
 
 // thread safe; but it is only called from the main thread
-void Session::RepeatedSquare(
+void Computer::RepeatedSquare(
     form f, const integer& D, const integer& L, WesolowskiCallback* weso, FastStorage* fast_storage)
 {
 #ifdef VDF_TEST
@@ -162,7 +162,7 @@ void Session::RepeatedSquare(
 #endif
 }
 
-void Session::CreateAndWriteProofOneWeso(uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso)
+void Computer::CreateAndWriteProofOneWeso(uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso)
 {
     iters_ = iters;
     proof_ = ProveOneWesolowski(iters, D, f, weso, stopped_);
@@ -171,9 +171,9 @@ void Session::CreateAndWriteProofOneWeso(uint64_t iters, integer& D, form f, One
     }
 }
 
-Session::~Session() { }
+Computer::~Computer() { }
 
-void Session::Run(uint64_t iter)
+void Computer::Run(uint64_t iter)
 {
     try {
         integer L = root(-D_, 4);
@@ -183,8 +183,8 @@ void Session::Run(uint64_t iter)
         FastStorage* fast_storage = NULL;
         stopped_ = false;
         // Starting the calculation
-        std::thread vdf_worker(&Session::RepeatedSquare, this, f, std::ref(D_), std::ref(L), weso.get(), fast_storage);
-        std::thread th_prover(&Session::CreateAndWriteProofOneWeso, this, iter, std::ref(D_), f, weso.get());
+        std::thread vdf_worker(&Computer::RepeatedSquare, this, f, std::ref(D_), std::ref(L), weso.get(), fast_storage);
+        std::thread th_prover(&Computer::CreateAndWriteProofOneWeso, this, iter, std::ref(D_), f, weso.get());
         // Calculation is finished
         stopped_ = true;
         vdf_worker.join();
@@ -194,8 +194,8 @@ void Session::Run(uint64_t iter)
     }
 }
 
-void Session::SetStop(bool stopped) { stopped_ = stopped; }
+void Computer::SetStop(bool stopped) { stopped_ = stopped; }
 
-std::tuple<uint64_t, Proof> Session::GetResult() const { return std::make_tuple(iters_, proof_); }
+std::tuple<uint64_t, Proof> Computer::GetResult() const { return std::make_tuple(iters_, proof_); }
 
 } // namespace vdf
