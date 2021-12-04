@@ -1,4 +1,0 @@
-namespace vdf
-{
-
-} // namespace vdf

@@ -4,6 +4,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "vdf.h"
+
 #include "callback.h"
 
 #include "create_discriminant.h"
@@ -11,19 +13,21 @@
 namespace vdf
 {
 
-Computer::Computer(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form)
-    : challenge_(std::move(challenge))
-    , discriminant_size_bits_(discriminant_size_bits)
-    , initial_form_(std::move(initial_form))
-{
-    D_ = CreateDiscriminant(const_cast<std::vector<uint8_t>&>(challenge_), discriminant_size_bits_);
+struct ComputerMembers {
+    std::vector<uint8_t> challenge;
+    int discriminant_size_bits;
 
-    fesetround(FE_TOWARDZERO);
-}
+    integer D;
+    std::vector<uint8_t> initial_form;
+
+    std::atomic<bool> stopped;
+    uint64_t iters { 0 };
+    Proof proof;
+};
 
 // thread safe; but it is only called from the main thread
-void Computer::RepeatedSquare(
-    form f, const integer& D, const integer& L, WesolowskiCallback* weso, FastStorage* fast_storage)
+void RepeatedSquare(form f, const integer& D, const integer& L, WesolowskiCallback* weso, FastStorage* fast_storage,
+    std::atomic<bool>& stopped)
 {
 #ifdef VDF_TEST
     uint64 num_calls_fast = 0;
@@ -34,7 +38,7 @@ void Computer::RepeatedSquare(
     uint64_t num_iterations = 0;
     uint64_t last_checkpoint = 0;
 
-    while (!stopped_) {
+    while (!stopped) {
         uint64 c_checkpoint_interval = checkpoint_interval;
 
 #ifdef VDF_TEST
@@ -162,13 +166,26 @@ void Computer::RepeatedSquare(
 #endif
 }
 
-void Computer::CreateAndWriteProofOneWeso(uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso)
+Proof CreateAndWriteProofOneWeso(
+    uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso, std::atomic<bool>& stopped)
 {
-    iters_ = iters;
-    proof_ = ProveOneWesolowski(iters, D, f, weso, stopped_);
-    if (stopped_) {
+    Proof proof = ProveOneWesolowski(iters, D, f, weso, stopped);
+    if (stopped) {
         spdlog::info("Got stop signal before completing the proof!");
     }
+    return proof;
+}
+
+Computer::Computer(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form)
+{
+    memImpl_ = new ComputerMembers;
+    memImpl_->challenge = std::move(challenge);
+    memImpl_->discriminant_size_bits = discriminant_size_bits;
+    memImpl_->initial_form = std::move(initial_form);
+    memImpl_->D
+        = CreateDiscriminant(const_cast<std::vector<uint8_t>&>(memImpl_->challenge), memImpl_->discriminant_size_bits);
+
+    fesetround(FE_TOWARDZERO);
 }
 
 Computer::~Computer() { }
@@ -176,17 +193,19 @@ Computer::~Computer() { }
 void Computer::Run(uint64_t iter)
 {
     try {
-        integer L = root(-D_, 4);
-        spdlog::info("Discriminant = {}", to_string(D_.impl));
-        form f = DeserializeForm(D_, initial_form_.data(), initial_form_.size());
-        auto weso = std::make_unique<OneWesolowskiCallback>(D_, f, iter);
+        integer L = root(-memImpl_->D, 4);
+        spdlog::info("Discriminant = {}", to_string(memImpl_->D.impl));
+        form f = DeserializeForm(memImpl_->D, memImpl_->initial_form.data(), memImpl_->initial_form.size());
+        auto weso = std::make_unique<OneWesolowskiCallback>(memImpl_->D, f, iter);
         FastStorage* fast_storage = NULL;
-        stopped_ = false;
+        memImpl_->stopped = false;
         // Starting the calculation
-        std::thread vdf_worker(&Computer::RepeatedSquare, this, f, std::ref(D_), std::ref(L), weso.get(), fast_storage);
-        std::thread th_prover(&Computer::CreateAndWriteProofOneWeso, this, iter, std::ref(D_), f, weso.get());
+        std::thread vdf_worker(RepeatedSquare, f, std::ref(memImpl_->D), std::ref(L), weso.get(), fast_storage,
+            std::ref(memImpl_->stopped));
+        std::thread th_prover(
+            CreateAndWriteProofOneWeso, iter, std::ref(memImpl_->D), f, weso.get(), std::ref(memImpl_->stopped));
         // Calculation is finished
-        stopped_ = true;
+        memImpl_->stopped = true;
         vdf_worker.join();
         th_prover.join();
     } catch (std::exception& e) {
@@ -194,8 +213,6 @@ void Computer::Run(uint64_t iter)
     }
 }
 
-void Computer::SetStop(bool stopped) { stopped_ = stopped; }
-
-std::tuple<uint64_t, Proof> Computer::GetResult() const { return std::make_tuple(iters_, proof_); }
+void Computer::SetStop(bool stopped) { memImpl_->stopped = stopped; }
 
 } // namespace vdf
