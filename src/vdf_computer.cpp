@@ -13,6 +13,35 @@
 namespace vdf
 {
 
+namespace utils
+{
+
+std::string BytesToStr(std::vector<unsigned char> const& in)
+{
+    std::ostringstream oss;
+    for (auto ch : in)
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ch);
+    return oss.str();
+}
+
+std::string ProofToHex(Proof const& proof)
+{
+    std::vector<uint8_t> res(proof.y.size() + proof.proof.size());
+    memcpy(res.data(), proof.y.data(), proof.y.size());
+    memcpy(res.data() + proof.y.size(), proof.proof.data(), proof.proof.size());
+    return BytesToStr(res);
+}
+
+Proof CreateProof(std::vector<uint8_t> y, std::vector<uint8_t> proof)
+{
+    Proof res;
+    res.proof = std::move(proof);
+    res.y = std::move(y);
+    return res;
+}
+
+} // namespace utils
+
 struct ComputerMembers {
     std::vector<uint8_t> challenge;
     int discriminant_size_bits;

@@ -9,6 +9,21 @@ namespace vdf
 
 struct ComputerMembers;
 
+namespace utils
+{
+
+struct Proof {
+    std::vector<uint8_t> y;
+    std::vector<uint8_t> proof;
+    uint8_t witness_type { 0 };
+};
+
+std::string ProofToHex(Proof const& proof);
+
+Proof CreateProof(std::vector<uint8_t> y, std::vector<uint8_t> proof);
+
+} // namespace utils
+
 class Computer
 {
     ComputerMembers* memImpl_ { nullptr };
