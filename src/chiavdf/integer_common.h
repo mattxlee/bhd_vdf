@@ -110,16 +110,14 @@ struct track_max_type {
         }
     }
 };
-track_max_type track_max;
+static track_max_type track_max;
 //#define TRACK_MAX(data) track_max.add(#data " {" __func__ ":" "__LINE__" ")", (data).num_bits())
 #define TRACK_MAX(data) track_max.add(__LINE__, #data, (data).num_bits(), (data)<0)
 
 //typedef __mpz_struct mpz_t[1];
 typedef __mpz_struct mpz_struct;
 
-int mpz_num_bits_upper_bound(mpz_struct* v) {
-    return mpz_size(v)*sizeof(mp_limb_t)*8;
-}
+int mpz_num_bits_upper_bound(mpz_struct* v);
 
 static bool allow_integer_constructor=false; //don't want static integers because they use the wrong allocator
 
@@ -401,17 +399,9 @@ struct integer {
     }
 };
 
-integer abs(const integer& t) {
-    integer res;
-    mpz_abs(res.impl, t.impl);
-    return res;
-}
+integer abs(const integer& t) ;
 
-integer root(const integer& t, int n) {
-    integer res;
-    mpz_root(res.impl, t.impl, n);
-    return res;
-}
+integer root(const integer& t, int n);
 
 struct gcd_res {
     integer gcd;
@@ -423,39 +413,11 @@ struct gcd_res {
 // abs(s) < abs(b) / (2 gcd)
 // abs(t) < abs(a) / (2 gcd)
 //(except if |s|<=1 or |t|<=1)
-gcd_res gcd(const integer& a, const integer& b) {
-    gcd_res res;
+gcd_res gcd(const integer& a, const integer& b);
 
-    mpz_gcdext(res.gcd.impl, res.s.impl, res.t.impl, a.impl, b.impl);
-
-    return res;
-}
-
-integer rand_integer(int num_bits, int seed=-1) {
-    thread_local gmp_randstate_t state;
-    thread_local bool is_init=false;
-
-    if (!is_init) {
-        gmp_randinit_mt(state);
-        gmp_randseed_ui(state, 0);
-        is_init=true;
-    }
-
-    if (seed!=-1) {
-        gmp_randseed_ui(state, seed);
-    }
-
-    integer res;
-    assert(num_bits>=0);
-    mpz_urandomb(res.impl, state, num_bits);
-    return res;
-}
+integer rand_integer(int num_bits, int seed=-1);
 
 
-USED string to_string(mpz_struct* t) {
-    integer t_int;
-    mpz_set(t_int.impl, t);
-    return t_int.to_string();
-}
+USED string to_string(mpz_struct* t);
 
 #endif // INTEGER_COMMON_H

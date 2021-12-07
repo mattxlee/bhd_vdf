@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.0)
 project(compile_asm)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 enable_language(ASM)
 
@@ -28,6 +29,19 @@ set(CMAKE_MODULE_PATH
     ${CMAKE_MODULE_PATH}
     )
 
+set(CHIAVDF_SRC
+    src/chiavdf/refcode/lzcnt.c
+    src/chiavdf/generic.cpp
+    src/chiavdf/proof_common.cpp
+    src/chiavdf/util.cpp
+    src/chiavdf/vdf_new.cpp
+    src/chiavdf/integer_common.cpp
+    src/chiavdf/integer.cpp
+    src/chiavdf/nucomp.cpp
+    src/chiavdf/bqfc.c
+    src/chiavdf/xgcd_partial.c
+    )
+
 find_package(GMP REQUIRED)
 find_package(GMPXX REQUIRED)
 find_package(spdlog REQUIRED)
@@ -40,6 +54,7 @@ include_directories(
 
 set(COMPILE_ASM_SRC
     src/chiavdf/compile_asm.cpp
+    ${CHIAVDF_SRC}
     )
 
 add_executable(compile_asm ${COMPILE_ASM_SRC})
@@ -63,7 +78,7 @@ add_custom_command(OUTPUT asm_compiled_avx512.s COMMAND compile_asm avx512)
 set(VDF_TEST_SRCS
     src/vdf_test.cpp
     src/vdf_computer.cpp
-    src/chiavdf/refcode/lzcnt.c
+    ${CHIAVDF_SRC}
     asm_compiled.s
     avx2_asm_compiled.s
     avx512_asm_compiled.s

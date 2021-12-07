@@ -29,10 +29,10 @@ extern int gcd_128_max_iter;
 extern std::string asmprefix;
 extern bool enable_all_instructions;
 
-bool bChecked=false;
-bool bAVX2=false;
+static bool bChecked=false;
+static bool bAVX2=false;
 
-bool enable_avx512_ifma=false;
+static bool enable_avx512_ifma=false;
 
 #if defined(__i386) || defined(_M_IX86)
     #define ARCH_X86
@@ -251,7 +251,7 @@ const int num_asm_tracking_data=128;
 const int track_cycles_num_buckets=24; //each bucket is from 2^i to 2^(i+1) cycles
 const int track_cycles_max_num=128;
 
-void mark_vdf_test() {
+inline void mark_vdf_test() {
     static bool did_warning=false;
     if (!is_vdf_test && !did_warning) {
         print( "test code enabled in production build" );

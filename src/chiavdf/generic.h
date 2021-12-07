@@ -4,6 +4,10 @@
 #ifndef ILYA_SHARED_HEADER_GENERIC
 #define ILYA_SHARED_HEADER_GENERIC
 
+#include <iostream>
+#include <sstream>
+#include <vector>
+
 namespace generic {
 using namespace std;
 
@@ -33,28 +37,9 @@ template<class type_a, class... types> void print(const type_a& a, const types&.
 }
 
 //if buffer is not null, will return an empty string
-string getstream(istream& targ, int block_size=10, string* buffer=nullptr) {
-    string new_buffer;
-    string& res=(buffer!=nullptr)? *buffer : new_buffer;
-    res.clear();
-    
-    while(1) {
-        res.resize(res.size()+block_size);
-        targ.read(&(res[res.size()-block_size]), block_size);
-        int c=targ.gcount();
-        if (c!=block_size) {
-            res.resize(res.size()-block_size+c);
-            assert(targ.eof());
-            return new_buffer;
-        }
-    }
-}
+string getstream(istream& targ, int block_size=10, string* buffer=nullptr);
 
-string getfile(const string& name, bool binary=0, int block_size=1024) {
-    ifstream in(name, binary? ios::binary|ios_base::in : ios_base::in);
-    assert(in.good());
-    return getstream(in, block_size);
-}
+string getfile(const string& name, bool binary=0, int block_size=1024);
 
 struct less_ptr {
     template<class ptr_type> bool operator()(ptr_type a, ptr_type b) {
@@ -109,9 +94,6 @@ template<class type, int size> int array_size(type(&)[size]) {
 }
 
 template<class type> std::ostream& print_as_number(std::ostream& out, const type& targ) { out << targ; return out; }
-template<> std::ostream& print_as_number<unsigned char>(std::ostream& out, const unsigned char& targ) { out << int(targ); return out; }
-template<> std::ostream& print_as_number<signed char>(std::ostream& out, const signed char& targ) { out << int(targ); return out; }
-template<> std::ostream& print_as_number<char>(std::ostream& out, const char& targ) { out << int(targ); return out; }
 
 //
 
@@ -246,7 +228,7 @@ template<class type_a, class type_b> class union_pair {
     }
 };
 
-void str_impl(vector<string>& out) {}
+void str_impl(vector<string>& out);
 
 template<class type_a, class... types> void str_impl(
     vector<string>& out, const type_a& a, const types&... targs

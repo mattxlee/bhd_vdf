@@ -20,10 +20,7 @@
     MIT licensing permission obtained January 13, 2020 by Chia Network Inc. from William Hart
     */
 
-#ifndef _XGCD_PARTIAL
-#define _XGCD_PARTIAL
-
-#include <gmp.h>
+#include "xgcd_partial.h"
 
 void mpz_xgcd_partial(mpz_t co2, mpz_t co1,
                                     mpz_t r2, mpz_t r1, const mpz_t L)
@@ -121,4 +118,3 @@ void mpz_xgcd_partial(mpz_t co2, mpz_t co1,
 
    mpz_clear(q); mpz_clear(r);
 }
-#endif /* _XGCD_PARTIAL */

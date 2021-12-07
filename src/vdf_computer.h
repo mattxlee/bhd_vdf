@@ -2,31 +2,28 @@
 #define VDF_COMPUTER_H
 
 #include <atomic>
+#include <memory>
 #include <vector>
+
+#include "include.h"
+
+#include "integer_common.h"
+#include "util.h"
 
 namespace vdf
 {
 
-struct ComputerMembers;
-
-namespace utils
-{
-
-struct Proof {
-    std::vector<uint8_t> y;
-    std::vector<uint8_t> proof;
-    uint8_t witness_type { 0 };
-};
-
-std::string ProofToHex(Proof const& proof);
-
-Proof CreateProof(std::vector<uint8_t> y, std::vector<uint8_t> proof);
-
-} // namespace utils
-
 class Computer
 {
-    ComputerMembers* memImpl_ { nullptr };
+    std::vector<uint8_t> challenge;
+    int discriminant_size_bits;
+
+    integer D;
+    std::vector<uint8_t> initial_form;
+
+    std::atomic<bool> stopped;
+    uint64_t iters { 0 };
+    Proof proof;
 
 public:
     Computer(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form);

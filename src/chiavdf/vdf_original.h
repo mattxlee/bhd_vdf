@@ -1,3 +1,5 @@
+#ifndef VDF_ORIGINAL_H
+#define VDF_ORIGINAL_H
 /**
 Copyright 2018 Chia Network Inc
 
@@ -324,3 +326,5 @@ public:
                    u, a, b, k, mu, v, sigma, lambda, f3.a, f3.b, f3.c, NULL); //,); 
     }
 };
+
+#endif

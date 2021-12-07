@@ -6,53 +6,10 @@
 
 #include "vdf.h"
 
-#include "callback.h"
-
 #include "create_discriminant.h"
 
 namespace vdf
 {
-
-namespace utils
-{
-
-std::string BytesToStr(std::vector<unsigned char> const& in)
-{
-    std::ostringstream oss;
-    for (auto ch : in)
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ch);
-    return oss.str();
-}
-
-std::string ProofToHex(Proof const& proof)
-{
-    std::vector<uint8_t> res(proof.y.size() + proof.proof.size());
-    memcpy(res.data(), proof.y.data(), proof.y.size());
-    memcpy(res.data() + proof.y.size(), proof.proof.data(), proof.proof.size());
-    return BytesToStr(res);
-}
-
-Proof CreateProof(std::vector<uint8_t> y, std::vector<uint8_t> proof)
-{
-    Proof res;
-    res.proof = std::move(proof);
-    res.y = std::move(y);
-    return res;
-}
-
-} // namespace utils
-
-struct ComputerMembers {
-    std::vector<uint8_t> challenge;
-    int discriminant_size_bits;
-
-    integer D;
-    std::vector<uint8_t> initial_form;
-
-    std::atomic<bool> stopped;
-    uint64_t iters { 0 };
-    Proof proof;
-};
 
 // thread safe; but it is only called from the main thread
 void RepeatedSquare(form f, const integer& D, const integer& L, WesolowskiCallback* weso, FastStorage* fast_storage,
@@ -207,12 +164,10 @@ Proof CreateAndWriteProofOneWeso(
 
 Computer::Computer(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form)
 {
-    memImpl_ = new ComputerMembers;
-    memImpl_->challenge = std::move(challenge);
-    memImpl_->discriminant_size_bits = discriminant_size_bits;
-    memImpl_->initial_form = std::move(initial_form);
-    memImpl_->D
-        = CreateDiscriminant(const_cast<std::vector<uint8_t>&>(memImpl_->challenge), memImpl_->discriminant_size_bits);
+    challenge = std::move(challenge);
+    discriminant_size_bits = discriminant_size_bits;
+    initial_form = std::move(initial_form);
+    D = CreateDiscriminant(challenge, discriminant_size_bits);
 
     fesetround(FE_TOWARDZERO);
 }
@@ -222,19 +177,18 @@ Computer::~Computer() { }
 void Computer::Run(uint64_t iter)
 {
     try {
-        integer L = root(-memImpl_->D, 4);
-        spdlog::info("Discriminant = {}", to_string(memImpl_->D.impl));
-        form f = DeserializeForm(memImpl_->D, memImpl_->initial_form.data(), memImpl_->initial_form.size());
-        auto weso = std::make_unique<OneWesolowskiCallback>(memImpl_->D, f, iter);
+        integer L = root(D, 4);
+        spdlog::info("Discriminant = {}", to_string(D.impl));
+        form f = DeserializeForm(D, initial_form.data(), initial_form.size());
+        auto weso = std::make_unique<OneWesolowskiCallback>(D, f, iter);
         FastStorage* fast_storage = NULL;
-        memImpl_->stopped = false;
+        stopped = false;
         // Starting the calculation
-        std::thread vdf_worker(RepeatedSquare, f, std::ref(memImpl_->D), std::ref(L), weso.get(), fast_storage,
-            std::ref(memImpl_->stopped));
-        std::thread th_prover(
-            CreateAndWriteProofOneWeso, iter, std::ref(memImpl_->D), f, weso.get(), std::ref(memImpl_->stopped));
+        std::thread vdf_worker(
+            RepeatedSquare, f, std::ref(D), std::ref(L), weso.get(), fast_storage, std::ref(stopped));
+        std::thread th_prover(CreateAndWriteProofOneWeso, iter, std::ref(D), f, weso.get(), std::ref(stopped));
         // Calculation is finished
-        memImpl_->stopped = true;
+        stopped = true;
         vdf_worker.join();
         th_prover.join();
     } catch (std::exception& e) {
@@ -242,6 +196,6 @@ void Computer::Run(uint64_t iter)
     }
 }
 
-void Computer::SetStop(bool stopped) { memImpl_->stopped = stopped; }
+void Computer::SetStop(bool stopped) { stopped = stopped; }
 
 } // namespace vdf

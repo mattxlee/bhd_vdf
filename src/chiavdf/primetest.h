@@ -1,6 +1,10 @@
 #ifndef PRIMETEST_H
 #define PRIMETEST_H
 
+#include <gmp.h>
+
+#include "include.h"
+
 #include "pprods.h"
 
 static int miller_rabin(const mpz_t n, mpz_t b, mpz_t d)
