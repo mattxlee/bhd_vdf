@@ -1,5 +1,6 @@
 #include "vdf_computer.h"
 
+#include <sstream>
 #include <thread>
 
 #include <spdlog/spdlog.h>
@@ -10,18 +11,27 @@
 
 #include "create_discriminant.h"
 
+int gcd_base_bits = 50;
+int gcd_128_max_iter = 3;
+
 namespace vdf
 {
 
 namespace types
 {
 
-Integer::Integer(Bytes data)
-    : data_(std::move(data))
-{
-}
+Integer::Integer(integer const& val) { val_.reset(new integer(val)); }
 
-Bytes Integer::ToBytes() const { return data_; }
+Integer::Integer(std::string_view str) { val_.reset(new integer(str.data())); }
+
+integer const& Integer::Get_integer() const { return *val_; }
+
+std::string Integer::FormatString() const
+{
+    std::stringstream ss;
+    ss << val_->impl;
+    return ss.str();
+}
 
 } // namespace types
 
@@ -30,14 +40,17 @@ namespace utils
 
 types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size)
 {
-    integer D = ::CreateDiscriminant(const_cast<types::Bytes&>(challenge), disc_size);
-    return types::Integer(D.to_bytes());
+    return types::Integer(::CreateDiscriminant(const_cast<types::Bytes&>(challenge), disc_size));
 }
 
-bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t iters, int disc_size, uint64_t recursion)
+bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t iters, uint8_t witness_type)
 {
-    return CheckProofOfTimeNWesolowski(
-        integer { D.ToBytes() }, proof.y.data(), proof.proof.data(), proof.proof.size(), iters, disc_size, recursion);
+    form x = form::generator(D.Get_integer());
+    std::vector<unsigned char> bytes;
+    bytes.insert(bytes.end(), proof.y.begin(), proof.y.end());
+    bytes.insert(bytes.end(), proof.proof.begin(), proof.proof.end());
+    return CheckProofOfTimeNWesolowski(D.Get_integer(), DEFAULT_ELEMENT, bytes.data(), bytes.size(), iters, 1024,
+        witness_type == 0 ? proof.witness_type : witness_type);
 }
 
 uint8_t ValueFromHexChar(char ch)
@@ -59,10 +72,17 @@ types::Bytes BytesFromStr(std::string_view str)
     uint32_t size = str.size() / 2;
     std::vector<uint8_t> res(size);
     for (uint32_t i = 0; i < size; ++i) {
-        uint8_t byte = (ValueFromHexChar(str[i]) << 4) + ValueFromHexChar(str[i + 1]);
+        uint8_t byte = (ValueFromHexChar(str[i * 2]) << 4) + ValueFromHexChar(str[i * 2 + 1]);
         res[i] = byte;
     }
     return res;
+}
+
+types::Bytes GetDefaultForm()
+{
+    types::Bytes default_form(100, 0);
+    default_form[0] = 8;
+    return default_form;
 }
 
 } // namespace utils
@@ -217,13 +237,28 @@ void CreateAndWriteProofOneWeso(
     }
     out.y = proof.y;
     out.proof = proof.proof;
+    out.witness_type = proof.witness_type;
+    stopped = true;
+}
+
+void Computer::InitializeComputer()
+{
+    init_gmp();
+    if (hasAVX2()) {
+        gcd_base_bits = 63;
+        gcd_128_max_iter = 2;
+    }
+}
+
+Computer::Computer(types::Integer D)
+    : D_(std::move(D))
+{
 }
 
 Computer::Computer(types::Integer D, types::Bytes initial_form)
     : D_(std::move(D))
     , initial_form_(std::move(initial_form))
 {
-    fesetround(FE_TOWARDZERO);
 }
 
 Computer::~Computer() { }
@@ -231,10 +266,17 @@ Computer::~Computer() { }
 void Computer::Run(uint64_t iter)
 {
     try {
-        integer D { D_.ToBytes() };
-        integer L = root(D, 4);
-        spdlog::info("Discriminant = {}", to_string(D.impl));
-        form f = DeserializeForm(D, initial_form_.data(), initial_form_.size());
+        integer D = D_.Get_integer();
+        spdlog::info("discriminant = {}", D_.FormatString());
+        assert(fesetround(FE_TOWARDZERO) == 0);
+        integer L = root(-D, 4);
+        form f;
+        if (initial_form_.empty()) {
+            f = form::generator(D);
+        } else {
+            f = DeserializeForm(D, initial_form_.data(), initial_form_.size());
+        }
+        spdlog::info("form initialized");
         auto weso = std::make_unique<OneWesolowskiCallback>(D, f, iter);
         FastStorage* fast_storage = NULL;
         stopped_ = false;
@@ -245,9 +287,9 @@ void Computer::Run(uint64_t iter)
             CreateAndWriteProofOneWeso, iter, std::ref(D), f, weso.get(), std::ref(stopped_), std::ref(proof_));
         iters_ = iter; // Assign the number of iterations
         // Calculation is finished
-        stopped_ = true;
         vdf_worker.join();
         th_prover.join();
+        spdlog::info("Computer is finished");
     } catch (std::exception& e) {
         spdlog::error("Exception in thread: {}", to_string(e.what()));
     }

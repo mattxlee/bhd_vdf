@@ -8,6 +8,8 @@
 #include <string>
 #include <string_view>
 
+struct integer;
+
 namespace vdf
 {
 
@@ -18,17 +20,22 @@ using Bytes = std::vector<uint8_t>;
 
 class Integer
 {
-    Bytes data_;
+    std::shared_ptr<integer> val_;
 
 public:
-    explicit Integer(Bytes data);
+    explicit Integer(integer const&);
 
-    Bytes ToBytes() const;
+    explicit Integer(std::string_view str);
+
+    integer const& Get_integer() const;
+
+    std::string FormatString() const;
 };
 
 struct Proof {
     types::Bytes y;
     types::Bytes proof;
+    uint8_t witness_type { 0 };
 };
 
 } // namespace types
@@ -38,9 +45,11 @@ namespace utils
 
 types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size);
 
-bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t iters, int disc_size, uint64_t recursion);
+bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t iters, uint8_t witness_type = 0);
 
 types::Bytes BytesFromStr(std::string_view str);
+
+types::Bytes GetDefaultForm();
 
 } // namespace utils
 
@@ -56,6 +65,10 @@ class Computer
     types::Proof proof_;
 
 public:
+    static void InitializeComputer();
+
+    explicit Computer(types::Integer D);
+
     Computer(types::Integer D, types::Bytes initial_form);
 
     ~Computer();

@@ -15,14 +15,15 @@ add_compile_definitions(
     FAST_MACHINE=1
     )
 
-if (${CMAKE_CXX_COMPILER_ID} MATCHES ^.*Clang$)
+if (${CMAKE_CXX_COMPILER_ID} MATCHES ^.*Clang.*$)
     set(NOPIE "-fno-PIE")
 else()
     set(NOPIE "-no-pie")
 endif()
-set(COMPILE_ASM_LDFLAGS "-flto ${NOPIE}")
+set(COMPILE_ASM_LDFLAGS "${NOPIE}")
 
-set(CMAKE_CXX_FLAGS "-O3 -flto -pthread ${NOPIE} -fvisibility=hidden")
+set(CMAKE_CXX_FLAGS_DEBUG "-pthread ${NOPIE} -fvisibility=hidden -g2 -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread ${NOPIE} -fvisibility=hidden -O3")
 
 include(FetchContent)
 FetchContent_Declare(
