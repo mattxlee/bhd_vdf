@@ -49,8 +49,8 @@ bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t it
     std::vector<unsigned char> bytes;
     bytes.insert(bytes.end(), proof.y.begin(), proof.y.end());
     bytes.insert(bytes.end(), proof.proof.begin(), proof.proof.end());
-    return CheckProofOfTimeNWesolowski(D.Get_integer(), DEFAULT_ELEMENT, bytes.data(), bytes.size(), iters, 1024,
-        witness_type == 0 ? proof.witness_type : witness_type);
+    return CheckProofOfTimeNWesolowski(D.Get_integer(), DEFAULT_ELEMENT, bytes.data(), bytes.size(), iters,
+        DEFAULT_DISC_SIZE, witness_type == 0 ? proof.witness_type : witness_type);
 }
 
 uint8_t ValueFromHexChar(char ch)
@@ -289,9 +289,9 @@ void Computer::Run(uint64_t iter)
         // Calculation is finished
         vdf_worker.join();
         th_prover.join();
-        spdlog::info("Computer is finished");
+        spdlog::info("calculating is finished");
     } catch (std::exception& e) {
-        spdlog::error("Exception in thread: {}", to_string(e.what()));
+        spdlog::error("run error: {}", to_string(e.what()));
     }
 }
 

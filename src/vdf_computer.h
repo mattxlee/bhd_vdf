@@ -13,6 +13,8 @@ struct integer;
 namespace vdf
 {
 
+int const DEFAULT_DISC_SIZE = 1024;
+
 namespace types
 {
 
@@ -43,7 +45,7 @@ struct Proof {
 namespace utils
 {
 
-types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size);
+types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size = DEFAULT_DISC_SIZE);
 
 bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t iters, uint8_t witness_type = 0);
 

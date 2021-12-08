@@ -23,15 +23,15 @@ TEST(VDF, BytesFromStr)
 TEST(VDF, Verify)
 {
     vdf::types::Bytes challenge { 0, 0, 1, 2, 3, 3, 4, 4 };
-    int const disc_size = 1024;
     uint64_t iters { 220 * 1024 };
 
     vdf::Computer::InitializeComputer();
-    auto D = vdf::utils::CreateDiscriminant(challenge, disc_size);
+    auto D = vdf::utils::CreateDiscriminant(challenge);
     vdf::Computer computer(D);
 
     computer.Run(iters);
 
     vdf::types::Proof proof = computer.GetProof();
     EXPECT_TRUE(vdf::utils::VerifyProof(D, proof, iters));
+    EXPECT_FALSE(vdf::utils::VerifyProof(D, proof, iters * 2));
 }
