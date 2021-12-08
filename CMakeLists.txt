@@ -59,6 +59,10 @@ set(COMPILE_ASM_SRC
     ${CHIAVDF_DIR}/src/compile_asm.cpp
     )
 
+set(CHIAVDF_SRC
+    ${CHIAVDF_DIR}/src/refcode/lzcnt.c
+    )
+
 add_executable(compile_asm ${COMPILE_ASM_SRC})
 target_compile_definitions(compile_asm PRIVATE ${COMPILE_ASM_DEFS})
 target_link_libraries(compile_asm PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
