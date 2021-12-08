@@ -20,10 +20,18 @@ if (${CMAKE_CXX_COMPILER_ID} MATCHES ^.*Clang.*$)
 else()
     set(NOPIE "-no-pie")
 endif()
-set(COMPILE_ASM_LDFLAGS "${NOPIE}")
 
-set(CMAKE_CXX_FLAGS_DEBUG "-pthread ${NOPIE} -fvisibility=hidden -g2 -O0")
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread ${NOPIE} -fvisibility=hidden -O3")
+string(TOLOWER "${CMAKE_BUILD_TYPE}" CONF)
+if (NOT CONF MATCHES "debug")
+    set(LTOFLAG " -flto")
+    message(STATUS "LTO is on")
+endif()
+
+set(COMPILE_ASM_LDFLAGS "${NOPIE}${LTOFLAG}")
+
+set(CXX_FLAGS "-pthread ${NOPIE}${LTOFLAG} -fvisibility=hidden")
+set(CMAKE_CXX_FLAGS_DEBUG "${CXX_FLAGS} -g2 -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS} -O3")
 
 include(FetchContent)
 FetchContent_Declare(
@@ -83,5 +91,18 @@ set(VDF_TEST_SRCS
     ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
     ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
     )
-add_executable(vdf_test ${VDF_TEST_SRCS} ${ASM_S})
+add_executable(vdf_test ${VDF_TEST_SRCS})
 target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS} GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES} spdlog::spdlog)
+
+set(VDF_LIB_SRCS
+    src/vdf_computer.cpp
+    ${CHIAVDF_SRC}
+    ${CMAKE_BINARY_DIR}/asm_compiled.s
+    ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
+    ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
+    )
+add_library(vdf ${VDF_LIB_SRCS})
+target_link_libraries(vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES} spdlog::spdlog)
+
+install(FILES src/vdf_computer.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(TARGETS vdf DESTINATION ${CMAKE_INSTALL_LIBDIR})
