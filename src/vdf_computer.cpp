@@ -3,8 +3,6 @@
 #include <sstream>
 #include <thread>
 
-#include <spdlog/spdlog.h>
-
 #include "vdf.h"
 
 #include "verifier.h"
@@ -202,7 +200,7 @@ void RepeatedSquare(form f, const integer& D, const integer& L, WesolowskiCallba
                     weso->iterations = num_iterations;
                 }
                 if (num_iterations >= kMaxItersAllowed - 500000) {
-                    spdlog::info("Maximum possible number of iterations reached!");
+                    // spdlog::info("Maximum possible number of iterations reached!");
                     return;
                 }
             }
@@ -221,10 +219,10 @@ void RepeatedSquare(form f, const integer& D, const integer& L, WesolowskiCallba
 #endif
     }
 
-    spdlog::info("VDF loop finished. Total iters: {}", num_iterations);
+    // spdlog::info("VDF loop finished. Total iters: {}", num_iterations);
 #ifdef VDF_TEST
-    spdlog::info("fast average batch size {}", double(num_iterations_fast) / double(num_calls_fast));
-    spdlog::info("fast iterations per slow iteration {}", double(num_iterations_fast) / double(num_iterations_slow));
+    // spdlog::info("fast average batch size {}", double(num_iterations_fast) / double(num_calls_fast));
+    // spdlog::info("fast iterations per slow iteration {}", double(num_iterations_fast) / double(num_iterations_slow));
 #endif
 }
 
@@ -233,7 +231,7 @@ void CreateAndWriteProofOneWeso(
 {
     Proof proof = ProveOneWesolowski(iters, D, f, weso, stopped);
     if (stopped) {
-        spdlog::info("Got stop signal before completing the proof!");
+        // spdlog::info("Got stop signal before completing the proof!");
     }
     out.y = proof.y;
     out.proof = proof.proof;
@@ -267,7 +265,7 @@ void Computer::Run(uint64_t iter)
 {
     try {
         integer D = D_.Get_integer();
-        spdlog::info("discriminant = {}", D_.FormatString());
+        // spdlog::info("discriminant = {}", D_.FormatString());
         assert(fesetround(FE_TOWARDZERO) == 0);
         integer L = root(-D, 4);
         form f;
@@ -276,7 +274,7 @@ void Computer::Run(uint64_t iter)
         } else {
             f = DeserializeForm(D, initial_form_.data(), initial_form_.size());
         }
-        spdlog::info("form initialized");
+        // spdlog::info("form initialized");
         auto weso = std::make_unique<OneWesolowskiCallback>(D, f, iter);
         FastStorage* fast_storage = NULL;
         stopped_ = false;
@@ -289,9 +287,9 @@ void Computer::Run(uint64_t iter)
         // Calculation is finished
         vdf_worker.join();
         th_prover.join();
-        spdlog::info("calculating is finished");
+        // spdlog::info("calculating is finished");
     } catch (std::exception& e) {
-        spdlog::error("run error: {}", to_string(e.what()));
+        // spdlog::error("run error: {}", to_string(e.what()));
     }
 }
 

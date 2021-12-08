@@ -35,16 +35,11 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS} -O3")
 
 include(FetchContent)
 FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest
-    GIT_TAG release-1.11.0
-    )
-FetchContent_Declare(
     chiavdf
     GIT_REPOSITORY https://github.com/Chia-Network/chiavdf
     GIT_TAG 1.0.3
     )
-FetchContent_MakeAvailable(googletest chiavdf)
+FetchContent_MakeAvailable(chiavdf)
 
 set(CHIAVDF_DIR ${CMAKE_BINARY_DIR}/_deps/chiavdf-src)
 
@@ -55,7 +50,6 @@ set(CMAKE_MODULE_PATH
 
 find_package(GMP REQUIRED)
 find_package(GMPXX REQUIRED)
-find_package(spdlog REQUIRED)
 
 include_directories(
     ${GMP_INCLUDE_DIR}
@@ -76,23 +70,25 @@ add_executable(compile_asm ${COMPILE_ASM_SRC})
 target_compile_definitions(compile_asm PRIVATE ${COMPILE_ASM_DEFS})
 target_link_libraries(compile_asm PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
-enable_testing()
-find_package(GTest REQUIRED)
-
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm DEPENDS compile_asm)
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm avx2 DEPENDS compile_asm)
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm avx512 DEPENDS compile_asm)
 
-set(VDF_TEST_SRCS
-    src/vdf_test.cpp
-    src/vdf_computer.cpp
-    ${CHIAVDF_SRC}
-    ${CMAKE_BINARY_DIR}/asm_compiled.s
-    ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
-    ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
-    )
-add_executable(vdf_test ${VDF_TEST_SRCS})
-target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS} GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES} spdlog::spdlog)
+find_package(GTest)
+if (GTEST_FOUND)
+    enable_testing()
+    set(VDF_TEST_SRCS
+        src/vdf_test.cpp
+        src/vdf_computer.cpp
+        ${CHIAVDF_SRC}
+        ${CMAKE_BINARY_DIR}/asm_compiled.s
+        ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
+        ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
+        )
+    add_executable(vdf_test ${VDF_TEST_SRCS})
+    target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS} GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
+    add_test(vdf_test COMMAND vdf_test)
+endif()
 
 set(VDF_LIB_SRCS
     src/vdf_computer.cpp
@@ -102,7 +98,7 @@ set(VDF_LIB_SRCS
     ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
     )
 add_library(vdf ${VDF_LIB_SRCS})
-target_link_libraries(vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES} spdlog::spdlog)
+target_link_libraries(vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
 install(FILES src/vdf_computer.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(TARGETS vdf DESTINATION ${CMAKE_INSTALL_LIBDIR})
