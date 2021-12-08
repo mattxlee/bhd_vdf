@@ -100,5 +100,5 @@ set(VDF_LIB_SRCS
 add_library(vdf ${VDF_LIB_SRCS})
 target_link_libraries(vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
-install(FILES src/vdf_computer.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(TARGETS vdf DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES src/vdf_computer.h DESTINATION include)
+install(TARGETS vdf DESTINATION lib)
