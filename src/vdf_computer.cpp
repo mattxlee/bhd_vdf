@@ -11,6 +11,29 @@
 namespace vdf
 {
 
+namespace types
+{
+
+Integer::Integer(Bytes data)
+    : data_(std::move(data))
+{
+}
+
+Bytes Integer::ToBytes() const { return data_; }
+
+} // namespace types
+
+namespace utils
+{
+
+types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size)
+{
+    integer D = ::CreateDiscriminant(const_cast<types::Bytes&>(challenge), disc_size);
+    return types::Integer(D.to_bytes());
+}
+
+} // namespace utils
+
 // thread safe; but it is only called from the main thread
 void RepeatedSquare(form f, const integer& D, const integer& L, WesolowskiCallback* weso, FastStorage* fast_storage,
     std::atomic<bool>& stopped)
@@ -152,48 +175,49 @@ void RepeatedSquare(form f, const integer& D, const integer& L, WesolowskiCallba
 #endif
 }
 
-Proof CreateAndWriteProofOneWeso(
-    uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso, std::atomic<bool>& stopped)
+void CreateAndWriteProofOneWeso(
+    uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso, std::atomic<bool>& stopped, types::Proof& out)
 {
     Proof proof = ProveOneWesolowski(iters, D, f, weso, stopped);
     if (stopped) {
         spdlog::info("Got stop signal before completing the proof!");
     }
-    return proof;
+    out.y = proof.y;
+    out.proof = proof.proof;
 }
 
-Computer::Computer(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form)
+Computer::Computer(types::Integer D, types::Bytes initial_form)
+    : D_(std::move(D))
+    , initial_form_(std::move(initial_form))
 {
-    // challenge = std::move(challenge);
-    // discriminant_size_bits = discriminant_size_bits;
-    // initial_form = std::move(initial_form);
-    // D = CreateDiscriminant(challenge, discriminant_size_bits);
-    //
-    // fesetround(FE_TOWARDZERO);
+    fesetround(FE_TOWARDZERO);
 }
 
 Computer::~Computer() { }
 
 void Computer::Run(uint64_t iter)
 {
-    // try {
-    //     integer L = root(D, 4);
-    //     spdlog::info("Discriminant = {}", to_string(D.impl));
-    //     form f = DeserializeForm(D, initial_form.data(), initial_form.size());
-    //     auto weso = std::make_unique<OneWesolowskiCallback>(D, f, iter);
-    //     FastStorage* fast_storage = NULL;
-    //     stopped = false;
-    //     // Starting the calculation
-    //     std::thread vdf_worker(
-    //         RepeatedSquare, f, std::ref(D), std::ref(L), weso.get(), fast_storage, std::ref(stopped));
-    //     std::thread th_prover(CreateAndWriteProofOneWeso, iter, std::ref(D), f, weso.get(), std::ref(stopped));
-    //     // Calculation is finished
-    //     stopped = true;
-    //     vdf_worker.join();
-    //     th_prover.join();
-    // } catch (std::exception& e) {
-    //     spdlog::error("Exception in thread: {}", to_string(e.what()));
-    // }
+    try {
+        integer D { D_.ToBytes() };
+        integer L = root(D, 4);
+        spdlog::info("Discriminant = {}", to_string(D.impl));
+        form f = DeserializeForm(D, initial_form_.data(), initial_form_.size());
+        auto weso = std::make_unique<OneWesolowskiCallback>(D, f, iter);
+        FastStorage* fast_storage = NULL;
+        stopped_ = false;
+        // Starting the calculation
+        std::thread vdf_worker(
+            RepeatedSquare, f, std::ref(D), std::ref(L), weso.get(), fast_storage, std::ref(stopped_));
+        std::thread th_prover(
+            CreateAndWriteProofOneWeso, iter, std::ref(D), f, weso.get(), std::ref(stopped_), std::ref(proof_));
+        iters_ = iter; // Assign the number of iterations
+        // Calculation is finished
+        stopped_ = true;
+        vdf_worker.join();
+        th_prover.join();
+    } catch (std::exception& e) {
+        spdlog::error("Exception in thread: {}", to_string(e.what()));
+    }
 }
 
 void Computer::SetStop(bool stopped) { stopped = stopped; }

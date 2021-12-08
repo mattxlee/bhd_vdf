@@ -5,34 +5,61 @@
 #include <memory>
 #include <vector>
 
-// #include "include.h"
-//
-// #include "integer_common.h"
-// #include "util.h"
-
 namespace vdf
 {
 
-class Computer
+namespace types
 {
-    // std::vector<uint8_t> challenge;
-    // int discriminant_size_bits;
-    //
-    // integer D;
-    // std::vector<uint8_t> initial_form;
-    //
-    // std::atomic<bool> stopped;
-    // uint64_t iters { 0 };
-    // Proof proof;
+
+using Bytes = std::vector<uint8_t>;
+
+class Integer
+{
+    Bytes data_;
 
 public:
-    Computer(std::vector<uint8_t> challenge, int discriminant_size_bits, std::vector<uint8_t> initial_form);
+    explicit Integer(Bytes data);
+
+    Bytes ToBytes() const;
+};
+
+struct Proof {
+    types::Bytes y;
+    types::Bytes proof;
+};
+
+} // namespace types
+
+namespace utils
+{
+
+types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size);
+
+} // namespace utils
+
+class Computer
+{
+    // Members to initialize the object
+    types::Bytes initial_form_;
+    types::Integer D_;
+    // Flags
+    std::atomic<bool> stopped_ { false };
+    // Results
+    uint64_t iters_ { 0 };
+    types::Proof proof_;
+
+public:
+    Computer(types::Integer D, types::Bytes initial_form);
 
     ~Computer();
 
     void Run(uint64_t iters);
 
     void SetStop(bool stopped);
+
+    uint64_t GetIters() const { return iters_; }
+
+    types::Proof const& GetProof() const { return proof_; }
 };
 
 } // namespace vdf
