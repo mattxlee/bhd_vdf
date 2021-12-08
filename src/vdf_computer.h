@@ -5,6 +5,9 @@
 #include <memory>
 #include <vector>
 
+#include <string>
+#include <string_view>
+
 namespace vdf
 {
 
@@ -36,6 +39,8 @@ namespace utils
 types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size);
 
 bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t iters, int disc_size, uint64_t recursion);
+
+types::Bytes BytesFromStr(std::string_view str);
 
 } // namespace utils
 

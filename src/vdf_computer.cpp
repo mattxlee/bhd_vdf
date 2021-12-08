@@ -40,6 +40,31 @@ bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t it
         integer { D.ToBytes() }, proof.y.data(), proof.proof.data(), proof.proof.size(), iters, disc_size, recursion);
 }
 
+uint8_t ValueFromHexChar(char ch)
+{
+    char hex[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    char chlo = std::tolower(ch);
+    auto it = std::find(std::begin(hex), std::end(hex), ch);
+    if (it == std::end(hex)) {
+        throw std::runtime_error("invalid hex character");
+    }
+    return std::distance(std::begin(hex), it);
+}
+
+types::Bytes BytesFromStr(std::string_view str)
+{
+    if (str.size() % 2 != 0) {
+        throw std::runtime_error("invalid hex string, the number of length cannot be divided by 2");
+    }
+    uint32_t size = str.size() / 2;
+    std::vector<uint8_t> res(size);
+    for (uint32_t i = 0; i < size; ++i) {
+        uint8_t byte = (ValueFromHexChar(str[i]) << 4) + ValueFromHexChar(str[i + 1]);
+        res[i] = byte;
+    }
+    return res;
+}
+
 } // namespace utils
 
 // thread safe; but it is only called from the main thread
