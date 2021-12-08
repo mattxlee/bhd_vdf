@@ -6,6 +6,8 @@
 
 #include "vdf.h"
 
+#include "verifier.h"
+
 #include "create_discriminant.h"
 
 namespace vdf
@@ -30,6 +32,12 @@ types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size)
 {
     integer D = ::CreateDiscriminant(const_cast<types::Bytes&>(challenge), disc_size);
     return types::Integer(D.to_bytes());
+}
+
+bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t iters, int disc_size, uint64_t recursion)
+{
+    return CheckProofOfTimeNWesolowski(
+        integer { D.ToBytes() }, proof.y.data(), proof.proof.data(), proof.proof.size(), iters, disc_size, recursion);
 }
 
 } // namespace utils
