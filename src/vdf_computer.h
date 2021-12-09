@@ -47,6 +47,8 @@ namespace utils
 
 types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size = DEFAULT_DISC_SIZE);
 
+types::Bytes ConnectBytes(types::Bytes const& lhs, types::Bytes const& rhs);
+
 types::Bytes SerializeProof(types::Proof const& proof);
 
 bool VerifyProof(types::Integer const& D, types::Bytes const& proof, uint64_t iters, uint8_t witness_type = 0,

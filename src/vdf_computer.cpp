@@ -41,13 +41,15 @@ types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size)
     return types::Integer(::CreateDiscriminant(const_cast<types::Bytes&>(challenge), disc_size));
 }
 
-types::Bytes SerializeProof(types::Proof const& proof)
+types::Bytes ConnectBytes(types::Bytes const& lhs, types::Bytes const& rhs)
 {
-    std::vector<unsigned char> bytes;
-    bytes.insert(bytes.end(), proof.y.begin(), proof.y.end());
-    bytes.insert(bytes.end(), proof.proof.begin(), proof.proof.end());
-    return bytes;
+    types::Bytes res(lhs.size() + rhs.size());
+    memcpy(res.data(), lhs.data(), lhs.size());
+    memcpy(res.data() + lhs.size(), rhs.data(), rhs.size());
+    return res;
 }
+
+types::Bytes SerializeProof(types::Proof const& proof) { return ConnectBytes(proof.y, proof.proof); }
 
 bool VerifyProof(
     types::Integer const& D, types::Bytes const& proof, uint64_t iters, uint8_t witness_type, types::Bytes const& x)
