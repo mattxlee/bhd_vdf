@@ -40,11 +40,11 @@ TEST(VDF, VerifyWithGenesisAndNext)
     EXPECT_TRUE(vdf::utils::VerifyProof(D, proof_data, iters));
     EXPECT_FALSE(vdf::utils::VerifyProof(D, proof_data, iters * 2));
 
-    vdf::Computer computer2(D, proof.proof);
+    vdf::Computer computer2(D, proof.y);
 
     computer2.Run(iters);
 
     vdf::types::Proof proof2 = computer2.GetProof();
     auto proof2_data = vdf::utils::SerializeProof(proof2);
-    EXPECT_TRUE(vdf::utils::VerifyProof(D, proof2_data, iters, proof2.witness_type, proof.proof));
+    EXPECT_TRUE(vdf::utils::VerifyProof(D, proof2_data, iters, proof2.witness_type, proof.y));
 }
