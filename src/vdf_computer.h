@@ -49,7 +49,7 @@ types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size =
 
 types::Bytes SerializeProof(types::Proof const& proof);
 
-bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t iters, uint8_t witness_type = 0,
+bool VerifyProof(types::Integer const& D, types::Bytes const& proof, uint64_t iters, uint8_t witness_type = 0,
     types::Bytes const& x = { 0x08 });
 
 types::Bytes BytesFromStr(std::string_view str);

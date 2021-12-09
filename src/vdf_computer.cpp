@@ -50,11 +50,10 @@ types::Bytes SerializeProof(types::Proof const& proof)
 }
 
 bool VerifyProof(
-    types::Integer const& D, types::Proof const& proof, uint64_t iters, uint8_t witness_type, types::Bytes const& x)
+    types::Integer const& D, types::Bytes const& proof, uint64_t iters, uint8_t witness_type, types::Bytes const& x)
 {
-    types::Bytes bytes = SerializeProof(proof);
-    return CheckProofOfTimeNWesolowski(D.Get_integer(), x.data(), bytes.data(), bytes.size(), iters, DEFAULT_DISC_SIZE,
-        witness_type == 0 ? proof.witness_type : witness_type);
+    return CheckProofOfTimeNWesolowski(
+        D.Get_integer(), x.data(), proof.data(), proof.size(), iters, DEFAULT_DISC_SIZE, witness_type);
 }
 
 uint8_t ValueFromHexChar(char ch)
