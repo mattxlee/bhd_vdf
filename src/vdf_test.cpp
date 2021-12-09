@@ -7,6 +7,8 @@
 char const* initial_form_str
     = "0100a27310baa44da5e1357dfd895f260dfa465d16f0f1fbf796e6f2a0df39c5dcbdca2192a6c2def98dc348d3730c416b0b5aaa8a99"
       "37177b15467694eb5cebac1c1574ae892501a265f62a85c99cfd5b7cb59d31567bfa2e931dc1de8e234da9050100";
+vdf::types::Bytes challenge { 0, 0, 1, 2, 3, 3, 4, 4 };
+uint64_t iters { 220 * 1024 };
 
 TEST(VDF, BytesFromStr)
 {
@@ -20,11 +22,8 @@ TEST(VDF, BytesFromStr)
     EXPECT_EQ(initial_form[96], 0xa9);
 }
 
-TEST(VDF, Verify)
+TEST(VDF, VerifyWithGensis)
 {
-    vdf::types::Bytes challenge { 0, 0, 1, 2, 3, 3, 4, 4 };
-    uint64_t iters { 220 * 1024 };
-
     vdf::Computer::InitializeComputer();
     auto D = vdf::utils::CreateDiscriminant(challenge);
     vdf::Computer computer(D);
@@ -34,4 +33,17 @@ TEST(VDF, Verify)
     vdf::types::Proof proof = computer.GetProof();
     EXPECT_TRUE(vdf::utils::VerifyProof(D, proof, iters));
     EXPECT_FALSE(vdf::utils::VerifyProof(D, proof, iters * 2));
+}
+
+TEST(VDF, VerifyWithInitialForm)
+{
+    vdf::Computer::InitializeComputer();
+    auto D = vdf::utils::CreateDiscriminant(challenge);
+    vdf::Computer computer(D, vdf::utils::BytesFromStr(initial_form_str));
+
+    computer.Run(iters);
+
+    vdf::types::Proof proof = computer.GetProof();
+    EXPECT_TRUE(
+        vdf::utils::VerifyProof(D, proof, iters, proof.witness_type, vdf::utils::BytesFromStr(initial_form_str)));
 }

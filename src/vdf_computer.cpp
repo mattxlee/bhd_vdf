@@ -41,14 +41,20 @@ types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size)
     return types::Integer(::CreateDiscriminant(const_cast<types::Bytes&>(challenge), disc_size));
 }
 
-bool VerifyProof(types::Integer const& D, types::Proof const& proof, uint64_t iters, uint8_t witness_type)
+types::Bytes SerializeProof(types::Proof const& proof)
 {
-    form x = form::generator(D.Get_integer());
     std::vector<unsigned char> bytes;
     bytes.insert(bytes.end(), proof.y.begin(), proof.y.end());
     bytes.insert(bytes.end(), proof.proof.begin(), proof.proof.end());
-    return CheckProofOfTimeNWesolowski(D.Get_integer(), DEFAULT_ELEMENT, bytes.data(), bytes.size(), iters,
-        DEFAULT_DISC_SIZE, witness_type == 0 ? proof.witness_type : witness_type);
+    return bytes;
+}
+
+bool VerifyProof(
+    types::Integer const& D, types::Proof const& proof, uint64_t iters, uint8_t witness_type, types::Bytes const& x)
+{
+    types::Bytes bytes = SerializeProof(proof);
+    return CheckProofOfTimeNWesolowski(D.Get_integer(), x.data(), bytes.data(), bytes.size(), iters, DEFAULT_DISC_SIZE,
+        witness_type == 0 ? proof.witness_type : witness_type);
 }
 
 uint8_t ValueFromHexChar(char ch)
@@ -200,7 +206,7 @@ void RepeatedSquare(form f, const integer& D, const integer& L, WesolowskiCallba
                     weso->iterations = num_iterations;
                 }
                 if (num_iterations >= kMaxItersAllowed - 500000) {
-                    // spdlog::info("Maximum possible number of iterations reached!");
+                    print("Maximum possible number of iterations reached!");
                     return;
                 }
             }
@@ -219,10 +225,10 @@ void RepeatedSquare(form f, const integer& D, const integer& L, WesolowskiCallba
 #endif
     }
 
-    // spdlog::info("VDF loop finished. Total iters: {}", num_iterations);
+    print("VDF loop finished. Total iters: ", num_iterations);
 #ifdef VDF_TEST
-    // spdlog::info("fast average batch size {}", double(num_iterations_fast) / double(num_calls_fast));
-    // spdlog::info("fast iterations per slow iteration {}", double(num_iterations_fast) / double(num_iterations_slow));
+    print("fast average batch size ", double(num_iterations_fast) / double(num_calls_fast));
+    print("fast iterations per slow iteration ", double(num_iterations_fast) / double(num_iterations_slow));
 #endif
 }
 
@@ -231,7 +237,7 @@ void CreateAndWriteProofOneWeso(
 {
     Proof proof = ProveOneWesolowski(iters, D, f, weso, stopped);
     if (stopped) {
-        // spdlog::info("Got stop signal before completing the proof!");
+        print("Got stop signal before completing the proof!");
     }
     out.y = proof.y;
     out.proof = proof.proof;
@@ -265,7 +271,7 @@ void Computer::Run(uint64_t iter)
 {
     try {
         integer D = D_.Get_integer();
-        // spdlog::info("discriminant = {}", D_.FormatString());
+        print("discriminant = ", D_.FormatString());
         assert(fesetround(FE_TOWARDZERO) == 0);
         integer L = root(-D, 4);
         form f;
@@ -274,7 +280,7 @@ void Computer::Run(uint64_t iter)
         } else {
             f = DeserializeForm(D, initial_form_.data(), initial_form_.size());
         }
-        // spdlog::info("form initialized");
+        print("form initialized");
         auto weso = std::make_unique<OneWesolowskiCallback>(D, f, iter);
         FastStorage* fast_storage = NULL;
         stopped_ = false;
@@ -287,9 +293,9 @@ void Computer::Run(uint64_t iter)
         // Calculation is finished
         vdf_worker.join();
         th_prover.join();
-        // spdlog::info("calculating is finished");
+        print("calculating is finished");
     } catch (std::exception& e) {
-        // spdlog::error("run error: {}", to_string(e.what()));
+        print("run error: ", to_string(e.what()));
     }
 }
 
