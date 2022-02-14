@@ -271,6 +271,8 @@ Computer::~Computer() { }
 void Computer::Run(uint64_t iter)
 {
     try {
+        std::lock_guard<std::mutex> __lock_guard(m_);
+
         integer D = D_.Get_integer();
         print("discriminant = ", D_.FormatString());
         assert(fesetround(FE_TOWARDZERO) == 0);
@@ -301,5 +303,7 @@ void Computer::Run(uint64_t iter)
 }
 
 void Computer::SetStop(bool stopped) { stopped = stopped; }
+
+void Computer::Join() { m_.lock(); }
 
 } // namespace vdf

@@ -4,6 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <thread>
 
 #include <string>
 #include <string_view>
@@ -67,6 +68,7 @@ class Computer
     types::Integer D_;
     // Flags
     std::atomic<bool> stopped_ { false };
+    std::mutex m_;
     // Results
     uint64_t iters_ { 0 };
     types::Proof proof_;
@@ -83,6 +85,8 @@ public:
     void Run(uint64_t iters);
 
     void SetStop(bool stopped);
+
+    void Join();
 
     uint64_t GetIters() const { return iters_; }
 
