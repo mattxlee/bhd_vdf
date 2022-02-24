@@ -47,4 +47,12 @@ TEST(VDF, VerifyWithGenesisAndNext)
     vdf::types::Proof proof2 = computer2.GetProof();
     auto proof2_data = vdf::utils::SerializeProof(proof2);
     EXPECT_TRUE(vdf::utils::VerifyProof(D, proof2_data, iters, proof2.witness_type, proof.y));
+
+    vdf::Computer computer3(D, proof2.y);
+
+    computer3.Run(iters);
+
+    auto proof3 = computer3.GetProof();
+    auto proof3_data = vdf::utils::SerializeProof(proof3);
+    EXPECT_TRUE(vdf::utils::VerifyProof(D, proof3_data, iters, proof3.witness_type, proof2.y));
 }
