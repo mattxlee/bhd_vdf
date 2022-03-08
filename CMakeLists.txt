@@ -74,7 +74,7 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/asm_compiled.s COMMAND ${CMAKE_BIN
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm avx2 DEPENDS compile_asm)
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm avx512 DEPENDS compile_asm)
 
-find_package(GTest)
+find_package(GTest CONFIG)
 if (GTEST_FOUND)
     enable_testing()
     set(VDF_TEST_SRCS
