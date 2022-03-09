@@ -1,5 +1,6 @@
 #include "vdf_computer.h"
 
+#include <memory>
 #include <sstream>
 #include <thread>
 
@@ -20,7 +21,7 @@ namespace types
 
 Integer::Integer(integer const& val) { val_.reset(new integer(val)); }
 
-Integer::Integer(std::string_view str) { val_.reset(new integer(str.data())); }
+Integer::Integer(std::string const& str) { val_.reset(new integer(str)); }
 
 integer const& Integer::Get_integer() const { return *val_; }
 
@@ -69,7 +70,7 @@ uint8_t ValueFromHexChar(char ch)
     return std::distance(std::begin(hex), it);
 }
 
-types::Bytes BytesFromStr(std::string_view str)
+types::Bytes BytesFromStr(std::string const& str)
 {
     if (str.size() % 2 != 0) {
         throw std::runtime_error("invalid hex string, the number of length cannot be divided by 2");
@@ -284,7 +285,7 @@ void Computer::Run(uint64_t iter)
             f = DeserializeForm(D, initial_form_.data(), initial_form_.size());
         }
         print("form initialized");
-        auto weso = std::make_unique<OneWesolowskiCallback>(D, f, iter);
+        std::unique_ptr<OneWesolowskiCallback> weso(new OneWesolowskiCallback(D, f, iter));
         FastStorage* fast_storage = NULL;
         stopped_ = false;
         // Starting the calculation

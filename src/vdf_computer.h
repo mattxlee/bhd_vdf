@@ -4,11 +4,9 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <vector>
-
-#include <string>
-#include <string_view>
 
 struct integer;
 
@@ -29,7 +27,7 @@ class Integer
 public:
     explicit Integer(integer const&);
 
-    explicit Integer(std::string_view str);
+    explicit Integer(std::string const& str);
 
     integer const& Get_integer() const;
 
@@ -56,7 +54,7 @@ types::Bytes SerializeProof(types::Proof const& proof);
 bool VerifyProof(types::Integer const& D, types::Bytes const& proof, uint64_t iters, uint8_t witness_type = 0,
     types::Bytes const& x = { 0x08 });
 
-types::Bytes BytesFromStr(std::string_view str);
+types::Bytes BytesFromStr(std::string const& str);
 
 types::Bytes GetDefaultForm();
 
