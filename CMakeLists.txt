@@ -78,7 +78,6 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s COMMAND ${CMAK
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm avx512 DEPENDS compile_asm)
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ./src/vdf_msgs.proto)
-message(STATUS ${PROTO_SRCS})
 
 find_package(GTest CONFIG)
 if (GTEST_FOUND)
@@ -117,7 +116,6 @@ set(VDF_SRV_SRCS
     ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
     ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
     )
-message(STATUS ${PROTO_SRCS})
 add_executable(vdf_srv
     ${VDF_SRV_SRCS}
     ${PROTO_SRCS}
