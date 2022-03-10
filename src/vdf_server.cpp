@@ -6,6 +6,8 @@
 #include <boost/asio.hpp>
 namespace asio = boost::asio;
 using namespace asio::ip;
+using asio::detail::socket_ops::host_to_network_short;
+using asio::detail::socket_ops::network_to_host_short;
 
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
@@ -15,44 +17,150 @@ namespace po = boost::program_options;
 #include <plog/Init.h>
 #include <plog/Log.h>
 
-class Message
+#include "vdf_msgs.pb.h"
+
+using Message = google::protobuf::Message;
+
+class MessageFactory
 {
-    int msg_id_ { -1 };
-
 public:
-    virtual ~Message() { }
+    virtual ~MessageFactory() { }
 
-    virtual int get_msg_id() const { return msg_id_; }
+    virtual int get_msg_id() const = 0;
+
+    virtual Message* parse(uint8_t const* data, int& size) const = 0;
 };
 
-template <int MAX_SIZE> class PacketAnalyzer
+template <int ID, typename T> class MessageFactoryTmpl : public MessageFactory
 {
+public:
+    int get_msg_id() const override { return ID; }
+
+    Message* parse(uint8_t const* data, int& size) const override
+    {
+        T* msg = new T();
+        if (!msg->ParseFromArray(data, size)) {
+            // The message cannot be parsed
+            delete msg;
+            return nullptr;
+        }
+        size = msg->ByteSizeLong();
+        return msg;
+    }
+};
+
+using MessageFactoryVec = std::vector<MessageFactory const*>;
+
+int const MSGID_PING = 1;
+int const MSGID_PONG = 2;
+int const MSGID_REQUESTVDF = 10;
+int const MSGID_REQUESTVDF_REPLY = 11;
+int const MSGID_VDFRESULT = 20;
+
+using MsgFactory_Ping = MessageFactoryTmpl<MSGID_PING, Ping>;
+using MsgFactory_Pong = MessageFactoryTmpl<MSGID_PONG, Pong>;
+using MsgFactory_RequestVDF = MessageFactoryTmpl<MSGID_REQUESTVDF, RequestVDF>;
+using MsgFactory_RequestVDFReply = MessageFactoryTmpl<MSGID_REQUESTVDF_REPLY, RequestVDFReply>;
+using MsgFactory_VDFResult = MessageFactoryTmpl<MSGID_VDFRESULT, VDFResult>;
+
+template <uint16_t MAX_SIZE> class PacketAnalyzer
+{
+    MessageFactoryVec factories_;
     std::array<uint8_t, MAX_SIZE> data_;
     int p_ { 0 };
 
 public:
+    ~PacketAnalyzer()
+    {
+        for (auto factory : factories_) {
+            delete factory;
+        }
+    }
+
+    template <typename T> void register_factory() { factories_.push_back(new T); }
+
     int remaining_bytes() const { return p_; }
 
     int write(uint8_t const* bytes, int size)
     {
         int available = MAX_SIZE - p_;
         int n = std::min<int>(size, available);
-        memcpy(data_.data(), bytes, n);
+        memcpy(data_.data() + p_, bytes, n);
         p_ += n;
         return n;
     }
 
-    std::tuple<Message*, int, bool> analyze() { return std::make_tuple(nullptr, 0, false); }
+    Message* analyze()
+    {
+        // Analyze the data and create messages
+        if (p_ < 3) {
+            // There are not enough bytes for the message header
+            return nullptr;
+        }
+
+        // First byte is message-id
+        uint8_t msg_id = data_[0];
+        auto i = std::find_if(std::begin(factories_), std::end(factories_),
+            [msg_id](MessageFactory const* factory) { return factory->get_msg_id() == msg_id; });
+        if (i == std::end(factories_)) {
+            return nullptr;
+        }
+
+        // Second word(2-byte) is the size of the message
+        uint16_t size_network;
+        memcpy(&size_network, data_.data() + 1, 2);
+        int size = network_to_host_short(size_network);
+        auto msg = (*i)->parse(data_.data() + 3, size);
+        if (msg == nullptr) {
+            return nullptr;
+        }
+
+        int bytes_to_copy = p_ - size;
+        if (bytes_to_copy > 0) {
+            memcpy(data_.data(), data_.data() + size, bytes_to_copy);
+            p_ -= size;
+        } else {
+            p_ = 0;
+        }
+
+        return msg;
+    }
 };
 
 class Session
 {
+    PacketAnalyzer<65535> analyzer_;
+
+    static int const BUF_SIZE = 4096;
     tcp::socket sck_;
+    uint8_t read_buf_[BUF_SIZE];
+
+    void read_next()
+    {
+        sck_.async_read_some(
+            asio::buffer(read_buf_, BUF_SIZE), [this](boost::system::error_code ec, std::size_t bytes) {
+                if (ec) {
+                    // TODO Cannot read from peer
+                    return;
+                }
+                analyzer_.write(read_buf_, bytes);
+                // Analyze message until no message can be found
+                while (1) {
+                    auto msg = analyzer_.analyze();
+                    if (msg == nullptr) {
+                        break;
+                    }
+                    // TODO Notify there is a message has been received
+                }
+            });
+    }
 
 public:
     explicit Session(tcp::socket sck)
         : sck_(std::move(sck))
     {
+        analyzer_.register_factory<MsgFactory_Ping>();
+        analyzer_.register_factory<MsgFactory_RequestVDF>();
     }
 
     tcp::socket& get_socket() { return sck_; }
