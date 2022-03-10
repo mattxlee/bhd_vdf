@@ -1,8 +1,11 @@
 #include <array>
-#include <boost/asio.hpp>
+#include <deque>
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include <boost/asio.hpp>
+
 namespace asio = boost::asio;
 using namespace asio::ip;
 using asio::detail::socket_ops::host_to_network_short;
@@ -20,8 +23,7 @@ namespace po = boost::program_options;
 
 using Message = google::protobuf::Message;
 
-class MessageFactory
-{
+class MessageFactory {
 public:
   virtual ~MessageFactory() {}
 
@@ -31,13 +33,11 @@ public:
 };
 
 template <int ID, typename T>
-class MessageFactoryTmpl : public MessageFactory
-{
+class MessageFactoryTmpl : public MessageFactory {
 public:
   int get_msg_id() const override { return ID; }
 
-  Message* parse(uint8_t const* data, int& size) const override
-  {
+  Message* parse(uint8_t const* data, int& size) const override {
     T* msg = new T();
     if (!msg->ParseFromArray(data, size)) {
       // The message cannot be parsed
@@ -64,31 +64,29 @@ using MsgFactory_RequestVDFReply =
     MessageFactoryTmpl<MSGID_REQUESTVDF_REPLY, RequestVDFReply>;
 using MsgFactory_VDFResult = MessageFactoryTmpl<MSGID_VDFRESULT, VDFResult>;
 
-template <uint16_t MAX_SIZE>
-class PacketAnalyzer
-{
+int const MAX_MSG_SIZE = 65530;
+
+template <uint16_t MAX_SIZE = MAX_MSG_SIZE>
+class PacketAnalyzer {
   MessageFactoryVec factories_;
   std::array<uint8_t, MAX_SIZE> data_;
   int p_{0};
 
 public:
-  ~PacketAnalyzer()
-  {
+  ~PacketAnalyzer() {
     for (auto factory : factories_) {
       delete factory;
     }
   }
 
   template <typename T>
-  void register_factory()
-  {
+  void register_factory() {
     factories_.push_back(new T);
   }
 
   int remaining_bytes() const { return p_; }
 
-  int write(uint8_t const* bytes, int size)
-  {
+  int write(uint8_t const* bytes, int size) {
     int available = MAX_SIZE - p_;
     int n = std::min<int>(size, available);
     memcpy(data_.data() + p_, bytes, n);
@@ -96,8 +94,7 @@ public:
     return n;
   }
 
-  Message* analyze()
-  {
+  Message* analyze() {
     // Analyze the data and create messages
     if (p_ < 3) {
       // There are not enough bytes for the message header
@@ -106,10 +103,11 @@ public:
 
     // First byte is message-id
     uint8_t msg_id = data_[0];
-    auto i = std::find_if(std::begin(factories_), std::end(factories_),
-                          [msg_id](MessageFactory const* factory) {
-                            return factory->get_msg_id() == msg_id;
-                          });
+    auto i = std::find_if(
+        std::begin(factories_), std::end(factories_),
+        [msg_id](MessageFactory const* factory) {
+          return factory->get_msg_id() == msg_id;
+        });
     if (i == std::end(factories_)) {
       return nullptr;
     }
@@ -135,16 +133,16 @@ public:
   }
 };
 
-class Session
-{
+class Session {
   PacketAnalyzer<65535> analyzer_;
 
   static int const BUF_SIZE = 4096;
   tcp::socket sck_;
   uint8_t read_buf_[BUF_SIZE];
 
-  void read_next()
-  {
+  std::deque<std::vector<uint8_t>> write_buf_deq_;
+
+  void read_next() {
     sck_.async_read_some(
         asio::buffer(read_buf_, BUF_SIZE),
         [this](boost::system::error_code ec, std::size_t bytes) {
@@ -164,50 +162,81 @@ class Session
         });
   }
 
+  void write_next() {
+    std::vector<uint8_t> const& buf = write_buf_deq_.front();
+    asio::async_write(
+        sck_, asio::buffer(buf),
+        [this](boost::system::error_code ec, std::size_t bytes) {
+          if (ec) {
+            // todo something is wrong
+            return;
+          }
+          write_buf_deq_.pop_front();
+          if (!write_buf_deq_.empty()) {
+            write_next();
+          }
+        });
+  }
+
 public:
-  explicit Session(tcp::socket sck) : sck_(std::move(sck))
-  {
+  explicit Session(tcp::socket sck) : sck_(std::move(sck)) {
     analyzer_.register_factory<MsgFactory_Ping>();
     analyzer_.register_factory<MsgFactory_RequestVDF>();
   }
 
   tcp::socket& get_socket() { return sck_; }
 
+  void write_message(Message* msg, uint8_t msg_id) {
+    bool do_write = write_buf_deq_.empty();
+
+    if (msg->ByteSizeLong() > MAX_MSG_SIZE) {
+      throw std::runtime_error("the message size is too large");
+    }
+    int packet_size = 3 + msg->ByteSizeLong();
+    std::vector<uint8_t> packet(packet_size, 0);
+    uint16_t size = static_cast<uint16_t>(msg->ByteSizeLong());
+    uint16_t size_network = host_to_network_short(size);
+    packet[0] = msg_id;
+    memcpy(packet.data() + 1, &size_network, sizeof(size_network));
+    msg->SerializeToArray(packet.data() + 3, size);
+    write_buf_deq_.push_back(std::move(packet));
+
+    if (do_write) {
+      write_next();
+    }
+  }
+
   void run() {}
 };
 
 using SessionVec = std::vector<Session>;
 
-class Server
-{
+class Server {
   asio::io_context& ioc_;
   tcp::acceptor acceptor_;
   SessionVec session_vec_;
 
-  void accept_next_socket()
-  {
+  void accept_next_socket() {
     tcp::socket sck(ioc_);
-    acceptor_.async_accept(sck, [this, sck = std::move(sck)](
-                                    boost::system::error_code ec) mutable {
-      if (ec) {
-        // TODO Something is wrong
-        return;
-      }
-      Session session(std::move(sck));
-      session.run();
+    acceptor_.async_accept(
+        sck,
+        [this, sck = std::move(sck)](boost::system::error_code ec) mutable {
+          if (ec) {
+            // TODO Something is wrong
+            return;
+          }
+          Session session(std::move(sck));
+          session.run();
 
-      session_vec_.push_back(std::move(session));
-    });
+          session_vec_.push_back(std::move(session));
+        });
   }
 
 public:
   Server(boost::asio::io_context& ioc, tcp::endpoint const& endpoint)
-      : ioc_(ioc), acceptor_(ioc, endpoint)
-  {
-  }
+      : ioc_(ioc), acceptor_(ioc, endpoint) {}
 
-  int run()
-  {
+  int run() {
     PLOG_INFO << "exit VDF service.";
     return 0;
   }
@@ -218,8 +247,7 @@ struct Arguments {
   unsigned short listening_port;
 };
 
-int main(int argc, const char* argv[])
-{
+int main(int argc, const char* argv[]) {
   Arguments args;
   po::options_description desc;
   desc.add_options()                    // All arguments

@@ -10,18 +10,15 @@
 
 struct integer;
 
-namespace vdf
-{
+namespace vdf {
 
 int const DEFAULT_DISC_SIZE = 1024;
 
-namespace types
-{
+namespace types {
 
 using Bytes = std::vector<uint8_t>;
 
-class Integer
-{
+class Integer {
   std::shared_ptr<integer> val_;
 
 public:
@@ -42,8 +39,7 @@ struct Proof {
 
 }  // namespace types
 
-namespace utils
-{
+namespace utils {
 
 types::Integer CreateDiscriminant(types::Bytes const& challenge,
                                   int disc_size = DEFAULT_DISC_SIZE);
@@ -62,8 +58,7 @@ types::Bytes GetDefaultForm();
 
 }  // namespace utils
 
-class Computer
-{
+class Computer {
   // Members to initialize the object
   types::Bytes initial_form_;
   types::Integer D_;

@@ -10,11 +10,9 @@
 int gcd_base_bits = 50;
 int gcd_128_max_iter = 3;
 
-namespace vdf
-{
+namespace vdf {
 
-namespace types
-{
+namespace types {
 
 Integer::Integer(integer const& val) { val_.reset(new integer(val)); }
 
@@ -22,8 +20,7 @@ Integer::Integer(std::string const& str) { val_.reset(new integer(str)); }
 
 integer const& Integer::Get_integer() const { return *val_; }
 
-std::string Integer::FormatString() const
-{
+std::string Integer::FormatString() const {
   std::stringstream ss;
   ss << val_->impl;
   return ss.str();
@@ -31,38 +28,34 @@ std::string Integer::FormatString() const
 
 }  // namespace types
 
-namespace utils
-{
+namespace utils {
 
-types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size)
-{
+types::Integer CreateDiscriminant(
+    types::Bytes const& challenge, int disc_size) {
   return types::Integer(
       ::CreateDiscriminant(const_cast<types::Bytes&>(challenge), disc_size));
 }
 
-types::Bytes ConnectBytes(types::Bytes const& lhs, types::Bytes const& rhs)
-{
+types::Bytes ConnectBytes(types::Bytes const& lhs, types::Bytes const& rhs) {
   types::Bytes res(lhs.size() + rhs.size());
   memcpy(res.data(), lhs.data(), lhs.size());
   memcpy(res.data() + lhs.size(), rhs.data(), rhs.size());
   return res;
 }
 
-types::Bytes SerializeProof(types::Proof const& proof)
-{
+types::Bytes SerializeProof(types::Proof const& proof) {
   return ConnectBytes(proof.y, proof.proof);
 }
 
-bool VerifyProof(types::Integer const& D, types::Bytes const& proof,
-                 uint64_t iters, uint8_t witness_type, types::Bytes const& x)
-{
-  return CheckProofOfTimeNWesolowski(D.Get_integer(), x.data(), proof.data(),
-                                     proof.size(), iters, DEFAULT_DISC_SIZE,
-                                     witness_type);
+bool VerifyProof(
+    types::Integer const& D, types::Bytes const& proof, uint64_t iters,
+    uint8_t witness_type, types::Bytes const& x) {
+  return CheckProofOfTimeNWesolowski(
+      D.Get_integer(), x.data(), proof.data(), proof.size(), iters,
+      DEFAULT_DISC_SIZE, witness_type);
 }
 
-uint8_t ValueFromHexChar(char ch)
-{
+uint8_t ValueFromHexChar(char ch) {
   char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
                 '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
   char chlo = std::tolower(ch);
@@ -73,8 +66,7 @@ uint8_t ValueFromHexChar(char ch)
   return std::distance(std::begin(hex), it);
 }
 
-types::Bytes BytesFromStr(std::string const& str)
-{
+types::Bytes BytesFromStr(std::string const& str) {
   if (str.size() % 2 != 0) {
     throw std::runtime_error(
         "invalid hex string, the number of length cannot be divided by 2");
@@ -89,8 +81,7 @@ types::Bytes BytesFromStr(std::string const& str)
   return res;
 }
 
-types::Bytes GetDefaultForm()
-{
+types::Bytes GetDefaultForm() {
   types::Bytes default_form(100, 0);
   default_form[0] = 8;
   return default_form;
@@ -99,10 +90,9 @@ types::Bytes GetDefaultForm()
 }  // namespace utils
 
 // thread safe; but it is only called from the main thread
-void RepeatedSquare(form f, const integer& D, const integer& L,
-                    WesolowskiCallback* weso, FastStorage* fast_storage,
-                    std::atomic<bool>& stopped)
-{
+void RepeatedSquare(
+    form f, const integer& D, const integer& L, WesolowskiCallback* weso,
+    FastStorage* fast_storage, std::atomic<bool>& stopped) {
 #ifdef VDF_TEST
   uint64 num_calls_fast = 0;
   uint64 num_iterations_fast = 0;
@@ -132,8 +122,9 @@ void RepeatedSquare(form f, const integer& D, const integer& L,
 
 #ifdef ENABLE_TRACK_CYCLES
     print("track cycles enabled; results will be wrong");
-    repeated_square_original(*weso->vdfo, f, D, L,
-                             100);  // randomize the a and b values
+    repeated_square_original(
+        *weso->vdfo, f, D, L,
+        100);  // randomize the a and b values
 #endif
 
     // This works single threaded
@@ -156,8 +147,8 @@ void RepeatedSquare(form f, const integer& D, const integer& L,
 
     if (actual_iterations == ~uint64(0)) {
       // corruption; f is unchanged. do the entire batch with the slow algorithm
-      repeated_square_original(*weso->vdfo, f, D, L, num_iterations, batch_size,
-                               weso);
+      repeated_square_original(
+          *weso->vdfo, f, D, L, num_iterations, batch_size, weso);
       actual_iterations = batch_size;
 
 #ifdef VDF_TEST
@@ -174,8 +165,8 @@ void RepeatedSquare(form f, const integer& D, const integer& L,
       // still valid it might terminate prematurely again (e.g. gcd quotient too
       // large), so will do one iteration of the slow algorithm this will also
       // reduce f if the fast algorithm terminated because it was too big
-      repeated_square_original(*weso->vdfo, f, D, L,
-                               num_iterations + actual_iterations, 1, weso);
+      repeated_square_original(
+          *weso->vdfo, f, D, L, num_iterations + actual_iterations, 1, weso);
 
 #ifdef VDF_TEST
       ++num_iterations_slow;
@@ -215,8 +206,8 @@ void RepeatedSquare(form f, const integer& D, const integer& L,
         if (num_iterations >= kSwitchIters && !nweso->LargeConstants()) {
           uint64 round_up = (100 - num_iterations % 100) % 100;
           if (round_up > 0) {
-            repeated_square_original(*weso->vdfo, f, D, L, num_iterations,
-                                     round_up, weso);
+            repeated_square_original(
+                *weso->vdfo, f, D, L, num_iterations, round_up, weso);
           }
           num_iterations += round_up;
           nweso->IncreaseConstants(num_iterations);
@@ -244,17 +235,18 @@ void RepeatedSquare(form f, const integer& D, const integer& L,
 
   print("VDF loop finished. Total iters: ", num_iterations);
 #ifdef VDF_TEST
-  print("fast average batch size ",
-        double(num_iterations_fast) / double(num_calls_fast));
-  print("fast iterations per slow iteration ",
-        double(num_iterations_fast) / double(num_iterations_slow));
+  print(
+      "fast average batch size ",
+      double(num_iterations_fast) / double(num_calls_fast));
+  print(
+      "fast iterations per slow iteration ",
+      double(num_iterations_fast) / double(num_iterations_slow));
 #endif
 }
 
-void CreateAndWriteProofOneWeso(uint64_t iters, integer& D, form f,
-                                OneWesolowskiCallback* weso,
-                                std::atomic<bool>& stopped, types::Proof& out)
-{
+void CreateAndWriteProofOneWeso(
+    uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso,
+    std::atomic<bool>& stopped, types::Proof& out) {
   Proof proof = ProveOneWesolowski(iters, D, f, weso, stopped);
   if (stopped) {
     print("Got stop signal before completing the proof!");
@@ -265,8 +257,7 @@ void CreateAndWriteProofOneWeso(uint64_t iters, integer& D, form f,
   stopped = true;
 }
 
-void Computer::InitializeComputer()
-{
+void Computer::InitializeComputer() {
   init_gmp();
   if (hasAVX2()) {
     gcd_base_bits = 63;
@@ -277,14 +268,11 @@ void Computer::InitializeComputer()
 Computer::Computer(types::Integer D) : D_(std::move(D)) {}
 
 Computer::Computer(types::Integer D, types::Bytes initial_form)
-    : D_(std::move(D)), initial_form_(std::move(initial_form))
-{
-}
+    : D_(std::move(D)), initial_form_(std::move(initial_form)) {}
 
 Computer::~Computer() {}
 
-void Computer::Run(uint64_t iter)
-{
+void Computer::Run(uint64_t iter) {
   try {
     std::lock_guard<std::mutex> __lock_guard(m_);
 
@@ -304,10 +292,12 @@ void Computer::Run(uint64_t iter)
     FastStorage* fast_storage = NULL;
     stopped_ = false;
     // Starting the calculation
-    std::thread vdf_worker(RepeatedSquare, f, std::ref(D), std::ref(L),
-                           weso.get(), fast_storage, std::ref(stopped_));
-    std::thread th_prover(CreateAndWriteProofOneWeso, iter, std::ref(D), f,
-                          weso.get(), std::ref(stopped_), std::ref(proof_));
+    std::thread vdf_worker(
+        RepeatedSquare, f, std::ref(D), std::ref(L), weso.get(), fast_storage,
+        std::ref(stopped_));
+    std::thread th_prover(
+        CreateAndWriteProofOneWeso, iter, std::ref(D), f, weso.get(),
+        std::ref(stopped_), std::ref(proof_));
     iters_ = iter;  // Assign the number of iterations
     // Calculation is finished
     vdf_worker.join();
