@@ -50,6 +50,8 @@ set(CMAKE_MODULE_PATH
 
 find_package(GMP REQUIRED)
 find_package(GMPXX REQUIRED)
+find_package(Boost 1.6 REQUIRED COMPONENTS program_options)
+find_package(Threads)
 
 include_directories(
     ${GMP_INCLUDE_DIR}
@@ -102,3 +104,20 @@ target_link_libraries(vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPX
 
 install(FILES src/vdf_computer.h DESTINATION include)
 install(TARGETS vdf DESTINATION lib)
+
+set(VDF_SRV_SRCS
+    src/vdf_server.cpp
+    src/vdf_computer.cpp
+    ${CHIAVDF_SRC}
+    ${CMAKE_BINARY_DIR}/asm_compiled.s
+    ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
+    ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
+    )
+add_executable(vdf_srv ${VDF_SRV_SRCS})
+target_link_libraries(vdf_srv PRIVATE
+    ${COMPILE_ASM_LDFLAGS}
+    ${GMP_LIBRARIES}
+    ${GMPXX_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+    Boost::program_options
+    )
