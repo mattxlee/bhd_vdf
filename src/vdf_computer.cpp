@@ -1,12 +1,11 @@
 #include "vdf_computer.h"
 
-#include <memory>
 #include <sstream>
-#include <thread>
 
-#include "create_discriminant.h"
 #include "vdf.h"
 #include "verifier.h"
+
+#include "create_discriminant.h"
 
 int gcd_base_bits = 50;
 int gcd_128_max_iter = 3;
