@@ -52,6 +52,7 @@ find_package(GMP REQUIRED)
 find_package(GMPXX REQUIRED)
 find_package(Boost 1.6 REQUIRED COMPONENTS program_options)
 find_package(Threads)
+find_package(Protobuf REQUIRED)
 
 include_directories(
     ${GMP_INCLUDE_DIR}
@@ -75,6 +76,9 @@ target_link_libraries(compile_asm PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm DEPENDS compile_asm)
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm avx2 DEPENDS compile_asm)
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm avx512 DEPENDS compile_asm)
+
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ./src/vdf_msgs.proto)
+message(STATUS ${PROTO_SRCS})
 
 find_package(GTest CONFIG)
 if (GTEST_FOUND)
@@ -113,11 +117,16 @@ set(VDF_SRV_SRCS
     ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
     ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
     )
-add_executable(vdf_srv ${VDF_SRV_SRCS})
+message(STATUS ${PROTO_SRCS})
+add_executable(vdf_srv
+    ${VDF_SRV_SRCS}
+    ${PROTO_SRCS}
+    )
 target_link_libraries(vdf_srv PRIVATE
     ${COMPILE_ASM_LDFLAGS}
     ${GMP_LIBRARIES}
     ${GMPXX_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
     Boost::program_options
+    protobuf::libprotobuf
     )
