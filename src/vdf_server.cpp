@@ -10,6 +10,11 @@ using namespace asio::ip;
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
+#include <plog/Appenders/ConsoleAppender.h>
+#include <plog/Formatters/TxtFormatter.h>
+#include <plog/Init.h>
+#include <plog/Log.h>
+
 class Message
 {
     int msg_id_ { -1 };
@@ -85,7 +90,11 @@ public:
     {
     }
 
-    int run() { return 0; }
+    int run()
+    {
+        PLOG_INFO << "exit VDF service.";
+        return 0;
+    }
 };
 
 struct Arguments {
@@ -113,6 +122,9 @@ int main(int argc, const char* argv[])
         std::cout << desc << std::endl;
         return 0;
     }
+
+    plog::ConsoleAppender<plog::TxtFormatter> console_appender;
+    plog::init(plog::Severity::info, &console_appender);
 
     asio::io_context ioc;
     auto addr = address::from_string(args.listening_addr);

@@ -39,7 +39,12 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/Chia-Network/chiavdf
     GIT_TAG 1.0.3
     )
-FetchContent_MakeAvailable(chiavdf)
+FetchContent_Declare(
+    plog
+    GIT_REPOSITORY https://github.com/sergiusthebest/plog
+    GIT_TAG 1.1.6
+)
+FetchContent_MakeAvailable(chiavdf plog)
 
 set(CHIAVDF_DIR ${CMAKE_BINARY_DIR}/_deps/chiavdf-src)
 
@@ -54,10 +59,14 @@ find_package(Boost 1.6 REQUIRED COMPONENTS program_options)
 find_package(Threads)
 find_package(Protobuf REQUIRED)
 
+message(STATUS ${plog_SOURCE_DIR})
+
 include_directories(
     ${GMP_INCLUDE_DIR}
     ${GMPXX_INCLUDE_DIR}
     ${CHIAVDF_DIR}/src
+    ${CMAKE_BINARY_DIR}
+    ${plog_SOURCE_DIR}/include
     )
 
 set(COMPILE_ASM_SRC
