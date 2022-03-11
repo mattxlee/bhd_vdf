@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <functional>
 
 #include <boost/asio.hpp>
 
@@ -133,6 +134,21 @@ public:
   }
 };
 
+enum class ActionType { Read, Write, Connect };
+std::string to_string(ActionType action_type) {
+  switch (action_type) {
+    case ActionType::Read:
+      return "read";
+    case ActionType::Write:
+      return "write";
+    case ActionType::Connect:
+      return "connect";
+  }
+  throw std::runtime_error("invalid action type");
+}
+
+using ErrorHandler = std::function<void(boost::system::error_code, ActionType)>;
+
 class Session {
   PacketAnalyzer<MAX_MSG_SIZE> analyzer_;
 
@@ -142,12 +158,16 @@ class Session {
 
   std::deque<std::vector<uint8_t>> write_buf_deq_;
 
+  ErrorHandler error_handler_;
+
   void read_next() {
     sck_.async_read_some(
         asio::buffer(read_buf_, BUF_SIZE),
         [this](boost::system::error_code ec, std::size_t bytes) {
           if (ec) {
-            // TODO Cannot read from peer
+            if (error_handler_) {
+              error_handler_(ec, ActionType::Read);
+            }
             return;
           }
           analyzer_.write(read_buf_, bytes);
@@ -169,7 +189,9 @@ class Session {
         sck_, asio::buffer(buf),
         [this](boost::system::error_code ec, std::size_t bytes) {
           if (ec) {
-            // todo something is wrong
+            if (error_handler_) {
+              error_handler_(ec, ActionType::Write);
+            }
             return;
           }
           write_buf_deq_.pop_front();
@@ -180,9 +202,13 @@ class Session {
   }
 
 public:
-  explicit Session(tcp::socket sck) : sck_(std::move(sck)) {
+  Session(tcp::socket sck) : sck_(std::move(sck)) {
     analyzer_.register_factory<MsgFactory_Ping>();
     analyzer_.register_factory<MsgFactory_RequestVDF>();
+  }
+
+  void set_error_handler(ErrorHandler error_handler) {
+    error_handler_ = std::move(error_handler);
   }
 
   tcp::socket& get_socket() { return sck_; }
@@ -211,11 +237,17 @@ public:
 };
 
 using SessionVec = std::vector<Session>;
+using SessionErrorHandler =
+    std::function<void(boost::system::error_code, ActionType, Session&)>;
+using ConnectErrorHandler = std::function<void(boost::system::error_code ec)>;
 
 class Server {
   asio::io_context& ioc_;
   tcp::acceptor acceptor_;
   SessionVec session_vec_;
+
+  ConnectErrorHandler connect_error_handler_;
+  SessionErrorHandler session_error_handler_;
 
   void accept_next_socket() {
     tcp::socket sck(ioc_);
@@ -223,19 +255,36 @@ class Server {
         sck,
         [this, sck = std::move(sck)](boost::system::error_code ec) mutable {
           if (ec) {
-            // TODO Something is wrong
-            return;
+            if (connect_error_handler_) {
+              connect_error_handler_(ec);
+            }
           }
           Session session(std::move(sck));
+          session.set_error_handler(
+              [this, &session](
+                  boost::system::error_code ec, ActionType action_type) {
+                if (session_error_handler_) {
+                  session_error_handler_(ec, action_type, session);
+                }
+              });
           session.run();
-
           session_vec_.push_back(std::move(session));
+
+          accept_next_socket();
         });
   }
 
 public:
   Server(boost::asio::io_context& ioc, tcp::endpoint const& endpoint)
       : ioc_(ioc), acceptor_(ioc, endpoint) {}
+
+  void set_connect_error_handler(ConnectErrorHandler connect_error_handler) {
+    connect_error_handler_ = std::move(connect_error_handler);
+  }
+
+  void set_session_error_handler(SessionErrorHandler session_error_handler) {
+    session_error_handler_ = std::move(session_error_handler);
+  }
 
   int run() {
     PLOG_INFO << "exit VDF service.";
@@ -247,6 +296,16 @@ struct Arguments {
   std::string listening_addr;
   unsigned short listening_port;
 };
+
+void handle_connect_error(boost::system::error_code ec) {
+  PLOG_ERROR << "error on accept a new connection - " << ec;
+}
+
+void handle_session_error(
+    boost::system::error_code ec, ActionType action_type, Session& session) {
+  PLOG_ERROR << "error on session - on " << to_string(action_type) << " - "
+             << ec;
+}
 
 int main(int argc, const char* argv[]) {
   Arguments args;
@@ -275,5 +334,7 @@ int main(int argc, const char* argv[]) {
   asio::io_context ioc;
   auto addr = address::from_string(args.listening_addr);
   Server srv(ioc, tcp::endpoint(addr, args.listening_port));
+  srv.set_connect_error_handler(handle_connect_error);
+  srv.set_session_error_handler(handle_session_error);
   return srv.run();
 }
