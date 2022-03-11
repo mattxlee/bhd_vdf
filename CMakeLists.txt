@@ -88,22 +88,6 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s COMMAND ${CM
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ./src/vdf_msgs.proto)
 
-find_package(GTest CONFIG)
-if (GTEST_FOUND)
-    enable_testing()
-    set(VDF_TEST_SRCS
-        src/vdf_test.cpp
-        src/vdf_computer.cpp
-        ${CHIAVDF_SRC}
-        ${CMAKE_BINARY_DIR}/asm_compiled.s
-        ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
-        ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
-        )
-    add_executable(vdf_test ${VDF_TEST_SRCS})
-    target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS} GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
-    add_test(vdf_test COMMAND vdf_test)
-endif()
-
 set(VDF_LIB_SRCS
     src/vdf_computer.cpp
     ${CHIAVDF_SRC}
@@ -138,3 +122,28 @@ target_link_libraries(vdf_srv PRIVATE
     Boost::program_options
     protobuf::libprotobuf
     )
+
+find_package(GTest CONFIG)
+if (GTEST_FOUND)
+    enable_testing()
+    # VDF test target
+    set(VDF_TEST_SRCS
+        src/vdf_test.cpp
+        src/vdf_computer.cpp
+        ${CHIAVDF_SRC}
+        ${CMAKE_BINARY_DIR}/asm_compiled.s
+        ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
+        ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
+        )
+    add_executable(vdf_test ${VDF_TEST_SRCS})
+    target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS} GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
+    add_test(vdf_test COMMAND vdf_test)
+    # VDF net test target
+    set(VDF_NET_TEST_SRCS
+      src/vdf_net.cpp
+      src/vdf_srv_test.cpp
+      )
+    add_executable(vdf_net_test ${VDF_NET_TEST_SRCS})
+    target_link_libraries(vdf_net_test PRIVATE GTest::gtest GTest::gtest_main)
+    add_test(vdf_net_test COMMAND vdf_net_test)
+endif()
