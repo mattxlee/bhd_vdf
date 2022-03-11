@@ -134,7 +134,7 @@ public:
 };
 
 class Session {
-  PacketAnalyzer<65535> analyzer_;
+  PacketAnalyzer<MAX_MSG_SIZE> analyzer_;
 
   static int const BUF_SIZE = 4096;
   tcp::socket sck_;
