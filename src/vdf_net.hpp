@@ -323,4 +323,84 @@ public:
   }
 };
 
+class Client {
+  tcp::socket sck_;
+  std::deque<std::vector<uint8_t>> write_buf_deq_;
+
+  static int const BUF_SIZE = 4096;
+  uint8_t read_buf_[BUF_SIZE];
+
+  PacketAnalyzer<MAX_MSG_SIZE> packet_analyzer_;
+  PacketBuilder packet_builder_;
+
+  MessageHandler message_handler_;
+  ErrorHandler error_handler_;
+
+  void read_next() {
+    sck_.async_read_some(
+        asio::buffer(read_buf_, BUF_SIZE),
+        [this](boost::system::error_code ec, std::size_t bytes) {
+          if (ec) {
+            // TODO need to stop the peer
+            if (error_handler_) {
+              error_handler_(ec, ActionType::Read);
+            }
+          }
+          packet_analyzer_.write(read_buf_, bytes);
+          while (1) {
+            std::unique_ptr<Message> msg(packet_analyzer_.analyze());
+            if (msg == nullptr) {
+              break;
+            }
+            if (message_handler_) {
+              message_handler_(msg.get());
+            }
+          }
+          read_next();
+        });
+  }
+
+  void write_next() {
+    auto const& data = write_buf_deq_.front();
+    asio::async_write(
+        sck_, asio::buffer(data),
+        [this](boost::system::error_code ec, std::size_t bytes) {
+          if (ec) {
+            if (error_handler_) {
+              error_handler_(ec, ActionType::Write);
+            }
+          }
+          write_buf_deq_.pop_front();
+          if (!write_buf_deq_.empty()) {
+            write_next();
+          }
+        });
+  }
+
+public:
+  Client(asio::io_context& ioc, MessageFactoryVec factories)
+      : sck_(ioc), packet_analyzer_(std::move(factories)) {}
+
+  void set_message_handler(MessageHandler message_handler) {
+    message_handler_ = std::move(message_handler);
+  }
+
+  void set_error_handler(ErrorHandler error_handler) {
+    error_handler_ = std::move(error_handler);
+  }
+
+  void write_message(Message const* msg, uint8_t msg_id) {
+    bool do_write = write_buf_deq_.empty();
+
+    auto packet = packet_builder_.build_message(msg, msg_id);
+    write_buf_deq_.push_back(std::move(packet));
+
+    if (do_write) {
+      write_next();
+    }
+  }
+
+  void run() { read_next(); }
+};
+
 }  // namespace net
