@@ -253,6 +253,8 @@ using ConnectErrorHandler = std::function<void(boost::system::error_code ec)>;
 class Server {
   asio::io_context& ioc_;
   tcp::acceptor acceptor_;
+  tcp::endpoint endpoint_;
+
   SessionVec session_vec_;
 
   SessionMessageHandler session_message_handler_;
@@ -289,7 +291,7 @@ class Server {
 
 public:
   Server(boost::asio::io_context& ioc, tcp::endpoint const& endpoint)
-      : ioc_(ioc), acceptor_(ioc, endpoint) {}
+      : ioc_(ioc), endpoint_(std::move(endpoint)), acceptor_(ioc) {}
 
   void set_session_message_handler(SessionMessageHandler message_handler) {
     session_message_handler_ = std::move(message_handler);
@@ -304,6 +306,13 @@ public:
   }
 
   int run() {
+    // Prepare acceptor and start  listening
+    acceptor_.open(endpoint_.protocol());
+    acceptor_.set_option(tcp::acceptor::reuse_address(true));
+    acceptor_.bind(endpoint_);
+    acceptor_.listen();
+
+    accept_next_socket();
     PLOG_INFO << "exit VDF service.";
     return 0;
   }
@@ -354,9 +363,12 @@ int main(int argc, const char* argv[]) {
 
   asio::io_context ioc;
   auto addr = address::from_string(args.listening_addr);
+  PLOG_INFO << "listening on " << addr << ":" << args.listening_port;
   Server srv(ioc, tcp::endpoint(addr, args.listening_port));
   srv.set_session_message_handler(handle_session_message);
   srv.set_connect_error_handler(handle_connect_error);
   srv.set_session_error_handler(handle_session_error);
-  return srv.run();
+  int ret = srv.run();
+  ioc.run();
+  return ret;
 }
