@@ -19,6 +19,8 @@ using asio::detail::socket_ops::network_to_host_short;
 
 #include "vdf_msgs.pb.h"
 
+namespace net {
+
 using Message = google::protobuf::Message;
 
 class MessageFactory {
@@ -314,3 +316,4 @@ public:
   }
 };
 
+} // namespace net

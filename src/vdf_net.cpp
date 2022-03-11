@@ -1,5 +1,7 @@
 #include "vdf_net.hpp"
 
+namespace net {
+
 std::string to_string(ActionType action_type) {
   switch (action_type) {
     case ActionType::Read:
@@ -11,3 +13,5 @@ std::string to_string(ActionType action_type) {
   }
   throw std::runtime_error("invalid action type");
 }
+
+}  // namespace net

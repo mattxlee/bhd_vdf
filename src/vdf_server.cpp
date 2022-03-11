@@ -10,7 +10,7 @@ struct Arguments {
   unsigned short listening_port;
 };
 
-void handle_session_message(Message const* msg, Session& session) {
+void handle_session_message(net::Message const* msg, net::Session& session) {
   // TODO handle message here
 }
 
@@ -19,7 +19,8 @@ void handle_connect_error(boost::system::error_code ec) {
 }
 
 void handle_session_error(
-    boost::system::error_code ec, ActionType action_type, Session& session) {
+    boost::system::error_code ec, net::ActionType action_type,
+    net::Session& session) {
   PLOG_ERROR << "error on session - on " << to_string(action_type) << " - "
              << ec;
 }
@@ -51,7 +52,7 @@ int main(int argc, const char* argv[]) {
   asio::io_context ioc;
   auto addr = address::from_string(args.listening_addr);
   PLOG_INFO << "listening on " << addr << ":" << args.listening_port;
-  Server srv(ioc, tcp::endpoint(addr, args.listening_port));
+  net::Server srv(ioc, tcp::endpoint(addr, args.listening_port));
   srv.set_session_message_handler(handle_session_message);
   srv.set_connect_error_handler(handle_connect_error);
   srv.set_session_error_handler(handle_session_error);
