@@ -147,7 +147,9 @@ add_test(vdf_test COMMAND vdf_test)
 set(VDF_SRV_TEST_SRCS
   src/vdf_net.cpp
   src/vdf_srv_test.cpp
+  ${PROTO_SRCS}
   )
 add_executable(vdf_srv_test ${VDF_SRV_TEST_SRCS})
-target_link_libraries(vdf_srv_test PRIVATE GTest::gtest GTest::gtest_main)
+target_link_libraries(vdf_srv_test PRIVATE GTest::gtest GTest::gtest_main
+  protobuf::libprotobuf)
 add_test(vdf_srv_test COMMAND vdf_srv_test)

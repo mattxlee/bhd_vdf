@@ -65,6 +65,7 @@ using MsgFactory_RequestVDFReply =
 using MsgFactory_VDFResult = MessageFactoryTmpl<MSGID_VDFRESULT, VDFResult>;
 
 int const MAX_MSG_SIZE = 65530;
+int const PACKET_HEAD_SIZE = 3;
 
 template <uint16_t MAX_SIZE = MAX_MSG_SIZE>
 class PacketAnalyzer {
@@ -96,7 +97,7 @@ public:
 
   Message* analyze() {
     // Analyze the data and create messages
-    if (p_ < 3) {
+    if (p_ < PACKET_HEAD_SIZE) {
       // There are not enough bytes for the message header
       return nullptr;
     }
@@ -116,7 +117,7 @@ public:
     uint16_t size_network;
     memcpy(&size_network, data_.data() + 1, 2);
     int size = network_to_host_short(size_network);
-    auto msg = (*i)->parse(data_.data() + 3, size);
+    auto msg = (*i)->parse(data_.data() + PACKET_HEAD_SIZE, size);
     if (msg == nullptr) {
       return nullptr;
     }
@@ -139,13 +140,16 @@ public:
     if (msg->ByteSizeLong() > MAX_MSG_SIZE) {
       throw std::runtime_error("the message size is too large");
     }
-    int packet_size = 3 + msg->ByteSizeLong();
+    int packet_size = PACKET_HEAD_SIZE + msg->ByteSizeLong();
     std::vector<uint8_t> packet(packet_size, 0);
     uint16_t size = static_cast<uint16_t>(msg->ByteSizeLong());
     uint16_t size_network = host_to_network_short(size);
     packet[0] = msg_id;
     memcpy(packet.data() + 1, &size_network, sizeof(size_network));
-    msg->SerializeToArray(packet.data() + 3, size);
+    bool succ = msg->SerializeToArray(packet.data() + PACKET_HEAD_SIZE, size);
+    if (!succ) {
+      return {};
+    }
     return packet;
   }
 };
@@ -316,4 +320,4 @@ public:
   }
 };
 
-} // namespace net
+}  // namespace net
