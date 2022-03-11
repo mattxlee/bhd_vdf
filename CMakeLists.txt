@@ -138,12 +138,12 @@ if (GTEST_FOUND)
     add_executable(vdf_test ${VDF_TEST_SRCS})
     target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS} GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
     add_test(vdf_test COMMAND vdf_test)
-    # VDF net test target
-    set(VDF_NET_TEST_SRCS
+    # VDF server test target
+    set(VDF_SRV_TEST_SRCS
       src/vdf_net.cpp
       src/vdf_srv_test.cpp
       )
-    add_executable(vdf_net_test ${VDF_NET_TEST_SRCS})
-    target_link_libraries(vdf_net_test PRIVATE GTest::gtest GTest::gtest_main)
-    add_test(vdf_net_test COMMAND vdf_net_test)
+    add_executable(vdf_net_test ${VDF_SRV_TEST_SRCS})
+    target_link_libraries(vdf_srv_test PRIVATE GTest::gtest GTest::gtest_main)
+    add_test(vdf_srv_test COMMAND vdf_srv_test)
 endif()
