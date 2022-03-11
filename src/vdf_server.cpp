@@ -159,6 +159,7 @@ class Session {
             }
             // TODO Notify there is a message has been received
           }
+          read_next();
         });
   }
 
@@ -206,7 +207,7 @@ public:
     }
   }
 
-  void run() {}
+  void run() { read_next(); }
 };
 
 using SessionVec = std::vector<Session>;
