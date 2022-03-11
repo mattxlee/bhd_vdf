@@ -148,6 +148,7 @@ std::string to_string(ActionType action_type) {
 }
 
 using ErrorHandler = std::function<void(boost::system::error_code, ActionType)>;
+using MessageHandler = std::function<void(Message const*)>;
 
 class Session {
   PacketAnalyzer<MAX_MSG_SIZE> analyzer_;
@@ -158,6 +159,7 @@ class Session {
 
   std::deque<std::vector<uint8_t>> write_buf_deq_;
 
+  MessageHandler message_handler_;
   ErrorHandler error_handler_;
 
   void read_next() {
@@ -177,7 +179,9 @@ class Session {
             if (msg == nullptr) {
               break;
             }
-            // TODO Notify there is a message has been received
+            if (message_handler_) {
+              message_handler_(msg);
+            }
           }
           read_next();
         });
@@ -205,6 +209,10 @@ public:
   Session(tcp::socket sck) : sck_(std::move(sck)) {
     analyzer_.register_factory<MsgFactory_Ping>();
     analyzer_.register_factory<MsgFactory_RequestVDF>();
+  }
+
+  void set_message_handler(MessageHandler message_handler) {
+    message_handler_ = std::move(message_handler);
   }
 
   void set_error_handler(ErrorHandler error_handler) {
@@ -237,6 +245,7 @@ public:
 };
 
 using SessionVec = std::vector<Session>;
+using SessionMessageHandler = std::function<void(Message const*, Session&)>;
 using SessionErrorHandler =
     std::function<void(boost::system::error_code, ActionType, Session&)>;
 using ConnectErrorHandler = std::function<void(boost::system::error_code ec)>;
@@ -246,6 +255,7 @@ class Server {
   tcp::acceptor acceptor_;
   SessionVec session_vec_;
 
+  SessionMessageHandler session_message_handler_;
   ConnectErrorHandler connect_error_handler_;
   SessionErrorHandler session_error_handler_;
 
@@ -260,6 +270,9 @@ class Server {
             }
           }
           Session session(std::move(sck));
+          session.set_message_handler([this, &session](Message const* msg) {
+            session_message_handler_(msg, session);
+          });
           session.set_error_handler(
               [this, &session](
                   boost::system::error_code ec, ActionType action_type) {
@@ -277,6 +290,10 @@ class Server {
 public:
   Server(boost::asio::io_context& ioc, tcp::endpoint const& endpoint)
       : ioc_(ioc), acceptor_(ioc, endpoint) {}
+
+  void set_session_message_handler(SessionMessageHandler message_handler) {
+    session_message_handler_ = std::move(message_handler);
+  }
 
   void set_connect_error_handler(ConnectErrorHandler connect_error_handler) {
     connect_error_handler_ = std::move(connect_error_handler);
@@ -296,6 +313,10 @@ struct Arguments {
   std::string listening_addr;
   unsigned short listening_port;
 };
+
+void handle_session_message(Message const* msg, Session& session) {
+  // TODO handle message here
+}
 
 void handle_connect_error(boost::system::error_code ec) {
   PLOG_ERROR << "error on accept a new connection - " << ec;
@@ -334,6 +355,7 @@ int main(int argc, const char* argv[]) {
   asio::io_context ioc;
   auto addr = address::from_string(args.listening_addr);
   Server srv(ioc, tcp::endpoint(addr, args.listening_port));
+  srv.set_session_message_handler(handle_session_message);
   srv.set_connect_error_handler(handle_connect_error);
   srv.set_session_error_handler(handle_session_error);
   return srv.run();
