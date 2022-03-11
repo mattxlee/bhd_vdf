@@ -131,6 +131,23 @@ public:
   }
 };
 
+class PacketBuilder {
+public:
+  std::vector<uint8_t> build_message(Message const* msg, uint8_t msg_id) {
+    if (msg->ByteSizeLong() > MAX_MSG_SIZE) {
+      throw std::runtime_error("the message size is too large");
+    }
+    int packet_size = 3 + msg->ByteSizeLong();
+    std::vector<uint8_t> packet(packet_size, 0);
+    uint16_t size = static_cast<uint16_t>(msg->ByteSizeLong());
+    uint16_t size_network = host_to_network_short(size);
+    packet[0] = msg_id;
+    memcpy(packet.data() + 1, &size_network, sizeof(size_network));
+    msg->SerializeToArray(packet.data() + 3, size);
+    return packet;
+  }
+};
+
 enum class ActionType { Read, Write, Connect };
 std::string to_string(ActionType action_type);
 
@@ -144,6 +161,7 @@ class Session {
   tcp::socket sck_;
   uint8_t read_buf_[BUF_SIZE];
 
+  PacketBuilder packet_builder_;
   std::deque<std::vector<uint8_t>> write_buf_deq_;
 
   MessageHandler message_handler_;
@@ -211,16 +229,7 @@ public:
   void write_message(Message* msg, uint8_t msg_id) {
     bool do_write = write_buf_deq_.empty();
 
-    if (msg->ByteSizeLong() > MAX_MSG_SIZE) {
-      throw std::runtime_error("the message size is too large");
-    }
-    int packet_size = 3 + msg->ByteSizeLong();
-    std::vector<uint8_t> packet(packet_size, 0);
-    uint16_t size = static_cast<uint16_t>(msg->ByteSizeLong());
-    uint16_t size_network = host_to_network_short(size);
-    packet[0] = msg_id;
-    memcpy(packet.data() + 1, &size_network, sizeof(size_network));
-    msg->SerializeToArray(packet.data() + 3, size);
+    auto packet = packet_builder_.build_message(msg, msg_id);
     write_buf_deq_.push_back(std::move(packet));
 
     if (do_write) {
