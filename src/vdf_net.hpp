@@ -184,12 +184,12 @@ class Session {
           analyzer_.write(read_buf_, bytes);
           // Analyze message until no message can be found
           while (1) {
-            auto msg = analyzer_.analyze();
+            std::unique_ptr<Message> msg(analyzer_.analyze());
             if (msg == nullptr) {
               break;
             }
             if (message_handler_) {
-              message_handler_(msg);
+              message_handler_(msg.get());
             }
           }
           read_next();
