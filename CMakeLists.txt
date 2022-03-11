@@ -120,6 +120,7 @@ install(TARGETS vdf DESTINATION lib)
 set(VDF_SRV_SRCS
     src/vdf_server.cpp
     src/vdf_computer.cpp
+    src/vdf_net.cpp
     ${CHIAVDF_SRC}
     ${CMAKE_BINARY_DIR}/asm_compiled.s
     ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
