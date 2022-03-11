@@ -74,15 +74,13 @@ class PacketAnalyzer {
   int p_{0};
 
 public:
+  PacketAnalyzer(MessageFactoryVec factories)
+      : factories_(std::move(factories)) {}
+
   ~PacketAnalyzer() {
     for (auto factory : factories_) {
       delete factory;
     }
-  }
-
-  template <typename T>
-  void register_factory() {
-    factories_.push_back(new T);
   }
 
   int remaining_bytes() const { return p_; }
@@ -217,10 +215,8 @@ class Session {
   }
 
 public:
-  Session(tcp::socket sck) : sck_(std::move(sck)) {
-    analyzer_.register_factory<MsgFactory_Ping>();
-    analyzer_.register_factory<MsgFactory_RequestVDF>();
-  }
+  Session(tcp::socket sck, MessageFactoryVec factories)
+      : sck_(std::move(sck)), analyzer_(std::move(factories)) {}
 
   void set_message_handler(MessageHandler message_handler) {
     message_handler_ = std::move(message_handler);
@@ -257,6 +253,8 @@ class Server {
   tcp::acceptor acceptor_;
   tcp::endpoint endpoint_;
 
+  MessageFactoryVec factories_;
+
   SessionVec session_vec_;
 
   SessionMessageHandler session_message_handler_;
@@ -273,7 +271,7 @@ class Server {
               connect_error_handler_(ec);
             }
           }
-          Session session(std::move(sck));
+          Session session(std::move(sck), factories_);
           session.set_message_handler([this, &session](Message const* msg) {
             session_message_handler_(msg, session);
           });
@@ -292,8 +290,13 @@ class Server {
   }
 
 public:
-  Server(boost::asio::io_context& ioc, tcp::endpoint const& endpoint)
-      : ioc_(ioc), endpoint_(std::move(endpoint)), acceptor_(ioc) {}
+  Server(
+      boost::asio::io_context& ioc, tcp::endpoint const& endpoint,
+      MessageFactoryVec factories)
+      : ioc_(ioc),
+        endpoint_(std::move(endpoint)),
+        acceptor_(ioc),
+        factories_(std::move(factories)) {}
 
   void set_session_message_handler(SessionMessageHandler message_handler) {
     session_message_handler_ = std::move(message_handler);

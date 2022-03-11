@@ -9,8 +9,7 @@ TEST(VDFNet, SerializeUnserialize) {
   auto packet = builder.build_message(&ping, net::MSGID_PING);
   EXPECT_TRUE(!packet.empty());
 
-  net::PacketAnalyzer analyzer;
-  analyzer.register_factory<net::MsgFactory_Ping>();
+  net::PacketAnalyzer analyzer({new net::MsgFactory_Ping});
   analyzer.write(packet.data(), packet.size());
   net::Message* msg = analyzer.analyze();
   EXPECT_TRUE(msg != nullptr);

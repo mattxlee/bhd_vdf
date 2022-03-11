@@ -52,7 +52,9 @@ int main(int argc, const char* argv[]) {
   asio::io_context ioc;
   auto addr = address::from_string(args.listening_addr);
   PLOG_INFO << "listening on " << addr << ":" << args.listening_port;
-  net::Server srv(ioc, tcp::endpoint(addr, args.listening_port));
+  net::Server srv(
+      ioc, tcp::endpoint(addr, args.listening_port),
+      {new net::MsgFactory_Ping, new net::MsgFactory_RequestVDF});
   srv.set_session_message_handler(handle_session_message);
   srv.set_connect_error_handler(handle_connect_error);
   srv.set_session_error_handler(handle_session_error);
