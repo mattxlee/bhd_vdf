@@ -17,3 +17,14 @@ TEST(VDFNet, SerializeUnserialize) {
     delete msg;
   }
 }
+
+TEST(VDFNet, PingPong) {
+  // Run server
+  asio::io_context ioc;
+  auto addr = asio::ip::address::from_string("127.0.0.1");
+  uint16_t port = 9090;
+  tcp::endpoint endpoint(addr, port);
+  net::Server srv(ioc, endpoint, {new net::MsgFactory_Ping});
+  srv.run();
+  ioc.run();
+}
