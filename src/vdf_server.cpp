@@ -11,7 +11,7 @@ struct Arguments {
 };
 
 void handle_session_message(
-    net::Message const* msg, uint8_t msg_id, net::Session& session) {
+    net::Message const* msg, uint8_t msg_id, net::SessionPtr session) {
   // TODO handle message here
 }
 
@@ -21,7 +21,7 @@ void handle_connect_error(boost::system::error_code ec) {
 
 void handle_session_error(
     boost::system::error_code ec, net::ActionType action_type,
-    net::Session& session) {
+    net::SessionPtr session) {
   PLOG_ERROR << "error on session - on " << to_string(action_type) << " - "
              << ec;
 }
@@ -55,11 +55,12 @@ int main(int argc, const char* argv[]) {
   PLOG_INFO << "listening on " << addr << ":" << args.listening_port;
   net::Server srv(
       ioc, tcp::endpoint(addr, args.listening_port),
-      {new net::MsgFactory_Ping, new net::MsgFactory_RequestVDF});
+      {std::make_shared<net::MsgFactory_Ping>(),
+       std::make_shared<net::MsgFactory_RequestVDF>()});
   srv.set_session_message_handler(handle_session_message);
   srv.set_connect_error_handler(handle_connect_error);
   srv.set_session_error_handler(handle_session_error);
-  int ret = srv.run();
+  srv.run();
   ioc.run();
-  return ret;
+  return 0;
 }

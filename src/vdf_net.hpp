@@ -49,7 +49,7 @@ public:
   }
 };
 
-using MessageFactoryVec = std::vector<MessageFactory const*>;
+using MessageFactoryVec = std::vector<std::shared_ptr<MessageFactory>>;
 
 int const MSGID_PING = 1;
 int const MSGID_PONG = 2;
@@ -77,12 +77,6 @@ public:
   PacketAnalyzer(MessageFactoryVec factories)
       : factories_(std::move(factories)) {}
 
-  ~PacketAnalyzer() {
-    for (auto factory : factories_) {
-      delete factory;
-    }
-  }
-
   int remaining_bytes() const { return p_; }
 
   int write(uint8_t const* bytes, int size) {
@@ -104,7 +98,7 @@ public:
     uint8_t msg_id = data_[0];
     auto i = std::find_if(
         std::begin(factories_), std::end(factories_),
-        [msg_id](MessageFactory const* factory) {
+        [msg_id](std::shared_ptr<MessageFactory> factory) {
           return factory->get_msg_id() == msg_id;
         });
     if (i == std::end(factories_)) {
@@ -158,6 +152,9 @@ std::string to_string(ActionType action_type);
 using ErrorHandler = std::function<void(boost::system::error_code, ActionType)>;
 using MessageHandler = std::function<void(Message const*, uint8_t msg_id)>;
 
+class Session;
+using SessionPtr = std::shared_ptr<Session>;
+
 class Session {
   PacketAnalyzer<MAX_MSG_SIZE> analyzer_;
 
@@ -179,6 +176,7 @@ class Session {
             if (ec == asio::error::eof) {
               return;
             }
+            PLOG_ERROR << ec.message();
             if (error_handler_) {
               error_handler_(ec, ActionType::Read);
             }
@@ -210,6 +208,7 @@ class Session {
             if (ec == asio::error::eof) {
               return;
             }
+            PLOG_ERROR << ec.message();
             if (error_handler_) {
               error_handler_(ec, ActionType::Write);
             }
@@ -223,8 +222,10 @@ class Session {
   }
 
 public:
-  Session(tcp::socket sck, MessageFactoryVec factories)
-      : sck_(std::move(sck)), analyzer_(std::move(factories)) {}
+  Session(asio::io_context& ioc, MessageFactoryVec factories)
+      : sck_(ioc), analyzer_(std::move(factories)) {}
+
+  tcp::socket& get_socket() { return sck_; }
 
   void set_message_handler(MessageHandler message_handler) {
     message_handler_ = std::move(message_handler);
@@ -233,8 +234,6 @@ public:
   void set_error_handler(ErrorHandler error_handler) {
     error_handler_ = std::move(error_handler);
   }
-
-  tcp::socket& get_socket() { return sck_; }
 
   void write_message(Message* msg, uint8_t msg_id) {
     bool do_write = write_buf_deq_.empty();
@@ -250,11 +249,11 @@ public:
   void run() { read_next(); }
 };
 
-using SessionVec = std::vector<Session>;
+using SessionVec = std::vector<SessionPtr>;
 using SessionMessageHandler =
-    std::function<void(Message const*, uint8_t, Session&)>;
+    std::function<void(Message const*, uint8_t, SessionPtr)>;
 using SessionErrorHandler =
-    std::function<void(boost::system::error_code, ActionType, Session&)>;
+    std::function<void(boost::system::error_code, ActionType, SessionPtr)>;
 using ConnectErrorHandler = std::function<void(boost::system::error_code ec)>;
 
 class Server {
@@ -271,32 +270,33 @@ class Server {
   SessionErrorHandler session_error_handler_;
 
   void accept_next_socket() {
-    tcp::socket sck(ioc_);
+    auto session_ptr = std::make_shared<Session>(ioc_, factories_);
     acceptor_.async_accept(
-        sck,
-        [this, sck = std::move(sck)](boost::system::error_code ec) mutable {
+        session_ptr->get_socket(),
+        [this, session_ptr](boost::system::error_code ec) {
           if (ec) {
-            if (ec == asio::error::eof) {
-              return;
-            }
+            PLOG_ERROR << ec.message();
             if (connect_error_handler_) {
               connect_error_handler_(ec);
             }
+            return;
           }
-          Session session(std::move(sck), factories_);
-          session.set_message_handler(
-              [this, &session](Message const* msg, uint8_t msg_id) {
-                session_message_handler_(msg, msg_id, session);
+          PLOG_INFO << "new connection";
+          // Prepare session
+          session_ptr->set_message_handler(
+              [this, session_ptr](Message const* msg, uint8_t msg_id) {
+                session_message_handler_(msg, msg_id, session_ptr);
               });
-          session.set_error_handler(
-              [this, &session](
+          session_ptr->set_error_handler(
+              [this, session_ptr](
                   boost::system::error_code ec, ActionType action_type) {
                 if (session_error_handler_) {
-                  session_error_handler_(ec, action_type, session);
+                  session_error_handler_(ec, action_type, session_ptr);
                 }
               });
-          session.run();
-          session_vec_.push_back(std::move(session));
+          session_ptr->run();
+          session_vec_.push_back(session_ptr);
+          PLOG_INFO << "new session has been prepared";
 
           accept_next_socket();
         });
@@ -323,7 +323,7 @@ public:
     session_error_handler_ = std::move(session_error_handler);
   }
 
-  int run() {
+  void run() {
     // Prepare acceptor and start  listening
     acceptor_.open(endpoint_.protocol());
     acceptor_.set_option(tcp::acceptor::reuse_address(true));
@@ -331,10 +331,16 @@ public:
     acceptor_.listen();
 
     accept_next_socket();
-    PLOG_INFO << "exit VDF service.";
-    return 0;
+  }
+
+  void stop() {
+    PLOG_INFO << "shutting down...";
+    boost::system::error_code ignored_ec;
+    acceptor_.close(ignored_ec);
   }
 };
+
+using ConnectHandler = std::function<void(bool succ)>;
 
 class Client {
   tcp::socket sck_;
@@ -346,6 +352,7 @@ class Client {
   PacketAnalyzer<MAX_MSG_SIZE> packet_analyzer_;
   PacketBuilder packet_builder_;
 
+  ConnectHandler connect_handler_;
   MessageHandler message_handler_;
   ErrorHandler error_handler_;
 
@@ -357,6 +364,7 @@ class Client {
             if (ec == asio::error::eof) {
               return;
             }
+            PLOG_ERROR << ec.message();
             if (error_handler_) {
               error_handler_(ec, ActionType::Read);
             }
@@ -387,6 +395,7 @@ class Client {
             if (ec == asio::error::eof) {
               return;
             }
+            PLOG_ERROR << ec.message();
             if (error_handler_) {
               error_handler_(ec, ActionType::Write);
             }
@@ -401,6 +410,10 @@ class Client {
 public:
   Client(asio::io_context& ioc, MessageFactoryVec factories)
       : sck_(ioc), packet_analyzer_(std::move(factories)) {}
+
+  void set_connect_handler(ConnectHandler connect_handler) {
+    connect_handler_ = std::move(connect_handler);
+  }
 
   void set_message_handler(MessageHandler message_handler) {
     message_handler_ = std::move(message_handler);
@@ -421,7 +434,26 @@ public:
     }
   }
 
-  void run() { read_next(); }
+  void connect(tcp::endpoint const& endpoint) {
+    sck_.async_connect(endpoint, [this](boost::system::error_code ec) {
+      if (connect_handler_) {
+        connect_handler_(!ec);
+      }
+      if (ec) {
+        // Handle errors
+        if (error_handler_) {
+          error_handler_(ec, ActionType::Connect);
+        }
+        return;
+      }
+      read_next();
+    });
+  }
+
+  void close() {
+    boost::system::error_code ignored_ec;
+    sck_.shutdown(tcp::socket::shutdown_receive, ignored_ec);
+  }
 };
 
 }  // namespace net
