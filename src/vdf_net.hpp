@@ -93,11 +93,11 @@ public:
     return n;
   }
 
-  Message* analyze() {
+  std::tuple<Message*, uint8_t> analyze() {
     // Analyze the data and create messages
     if (p_ < PACKET_HEAD_SIZE) {
       // There are not enough bytes for the message header
-      return nullptr;
+      return std::make_tuple(nullptr, 0);
     }
 
     // First byte is message-id
@@ -108,7 +108,7 @@ public:
           return factory->get_msg_id() == msg_id;
         });
     if (i == std::end(factories_)) {
-      return nullptr;
+      return std::make_tuple(nullptr, 0);
     }
 
     // Second word(2-byte) is the size of the message
@@ -117,7 +117,7 @@ public:
     int size = network_to_host_short(size_network);
     auto msg = (*i)->parse(data_.data() + PACKET_HEAD_SIZE, size);
     if (msg == nullptr) {
-      return nullptr;
+      return std::make_tuple(nullptr, 0);
     }
 
     int bytes_to_copy = p_ - size;
@@ -128,7 +128,7 @@ public:
       p_ = 0;
     }
 
-    return msg;
+    return std::make_tuple(msg, msg_id);
   }
 };
 
@@ -156,7 +156,7 @@ enum class ActionType { Read, Write, Connect };
 std::string to_string(ActionType action_type);
 
 using ErrorHandler = std::function<void(boost::system::error_code, ActionType)>;
-using MessageHandler = std::function<void(Message const*)>;
+using MessageHandler = std::function<void(Message const*, uint8_t msg_id)>;
 
 class Session {
   PacketAnalyzer<MAX_MSG_SIZE> analyzer_;
@@ -184,12 +184,15 @@ class Session {
           analyzer_.write(read_buf_, bytes);
           // Analyze message until no message can be found
           while (1) {
-            std::unique_ptr<Message> msg(analyzer_.analyze());
+            Message* p;
+            uint8_t msg_id;
+            std::tie(p, msg_id) = analyzer_.analyze();
+            std::unique_ptr<Message> msg(p);
             if (msg == nullptr) {
               break;
             }
             if (message_handler_) {
-              message_handler_(msg.get());
+              message_handler_(msg.get(), msg_id);
             }
           }
           read_next();
@@ -243,7 +246,8 @@ public:
 };
 
 using SessionVec = std::vector<Session>;
-using SessionMessageHandler = std::function<void(Message const*, Session&)>;
+using SessionMessageHandler =
+    std::function<void(Message const*, uint8_t, Session&)>;
 using SessionErrorHandler =
     std::function<void(boost::system::error_code, ActionType, Session&)>;
 using ConnectErrorHandler = std::function<void(boost::system::error_code ec)>;
@@ -272,9 +276,10 @@ class Server {
             }
           }
           Session session(std::move(sck), factories_);
-          session.set_message_handler([this, &session](Message const* msg) {
-            session_message_handler_(msg, session);
-          });
+          session.set_message_handler(
+              [this, &session](Message const* msg, uint8_t msg_id) {
+                session_message_handler_(msg, msg_id, session);
+              });
           session.set_error_handler(
               [this, &session](
                   boost::system::error_code ec, ActionType action_type) {
@@ -348,12 +353,15 @@ class Client {
           }
           packet_analyzer_.write(read_buf_, bytes);
           while (1) {
-            std::unique_ptr<Message> msg(packet_analyzer_.analyze());
+            Message* p;
+            uint8_t msg_id;
+            std::tie(p, msg_id) = packet_analyzer_.analyze();
+            std::unique_ptr<Message> msg(p);
             if (msg == nullptr) {
               break;
             }
             if (message_handler_) {
-              message_handler_(msg.get());
+              message_handler_(msg.get(), msg_id);
             }
           }
           read_next();

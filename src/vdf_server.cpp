@@ -10,7 +10,8 @@ struct Arguments {
   unsigned short listening_port;
 };
 
-void handle_session_message(net::Message const* msg, net::Session& session) {
+void handle_session_message(
+    net::Message const* msg, uint8_t msg_id, net::Session& session) {
   // TODO handle message here
 }
 

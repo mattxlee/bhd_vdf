@@ -11,11 +11,10 @@ TEST(VDFNet, SerializeUnserialize) {
 
   net::PacketAnalyzer analyzer({new net::MsgFactory_Ping});
   analyzer.write(packet.data(), packet.size());
-  net::Message* msg = analyzer.analyze();
+  net::Message* p;
+  std::tie(p, std::ignore) = analyzer.analyze();
+  std::unique_ptr<net::Message> msg(p);
   EXPECT_TRUE(msg != nullptr);
-  if (msg) {
-    delete msg;
-  }
 }
 
 TEST(VDFNet, PingPong) {
