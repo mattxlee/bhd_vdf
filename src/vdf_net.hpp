@@ -151,6 +151,7 @@ std::string to_string(ActionType action_type);
 
 using ErrorHandler = std::function<void(boost::system::error_code, ActionType)>;
 using MessageHandler = std::function<void(Message const*, uint8_t msg_id)>;
+using SessionEndHandler = std::function<void()>;
 
 class Session;
 using SessionPtr = std::shared_ptr<Session>;
@@ -167,6 +168,7 @@ class Session {
 
   MessageHandler message_handler_;
   ErrorHandler error_handler_;
+  SessionEndHandler end_handler_;
 
   void read_next() {
     sck_.async_read_some(
@@ -174,6 +176,10 @@ class Session {
         [this](boost::system::error_code ec, std::size_t bytes) {
           if (ec) {
             if (ec == asio::error::eof) {
+              // notify server that the session is ready to close
+              if (end_handler_) {
+                end_handler_();
+              }
               return;
             }
             PLOG_ERROR << ec.message();
@@ -235,6 +241,10 @@ public:
     error_handler_ = std::move(error_handler);
   }
 
+  void set_end_handler(SessionEndHandler end_handler) {
+    end_handler_ = std::move(end_handler);
+  }
+
   void write_message(Message* msg, uint8_t msg_id) {
     bool do_write = write_buf_deq_.empty();
 
@@ -294,6 +304,13 @@ class Server {
                   session_error_handler_(ec, action_type, session_ptr);
                 }
               });
+          session_ptr->set_end_handler([this, session_ptr]() {
+            auto i = std::find(
+                std::begin(session_vec_), std::end(session_vec_), session_ptr);
+            if (i != std::end(session_vec_)) {
+              session_vec_.erase(i);
+            }
+          });
           session_ptr->run();
           session_vec_.push_back(session_ptr);
           PLOG_INFO << "new session has been prepared";
