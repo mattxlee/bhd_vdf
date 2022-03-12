@@ -176,10 +176,12 @@ class Session {
         asio::buffer(read_buf_, BUF_SIZE),
         [this](boost::system::error_code ec, std::size_t bytes) {
           if (ec) {
+            if (ec == asio::error::eof) {
+              return;
+            }
             if (error_handler_) {
               error_handler_(ec, ActionType::Read);
             }
-            return;
           }
           analyzer_.write(read_buf_, bytes);
           // Analyze message until no message can be found
@@ -205,6 +207,9 @@ class Session {
         sck_, asio::buffer(buf),
         [this](boost::system::error_code ec, std::size_t bytes) {
           if (ec) {
+            if (ec == asio::error::eof) {
+              return;
+            }
             if (error_handler_) {
               error_handler_(ec, ActionType::Write);
             }
@@ -271,6 +276,9 @@ class Server {
         sck,
         [this, sck = std::move(sck)](boost::system::error_code ec) mutable {
           if (ec) {
+            if (ec == asio::error::eof) {
+              return;
+            }
             if (connect_error_handler_) {
               connect_error_handler_(ec);
             }
@@ -346,7 +354,9 @@ class Client {
         asio::buffer(read_buf_, BUF_SIZE),
         [this](boost::system::error_code ec, std::size_t bytes) {
           if (ec) {
-            // TODO need to stop the peer
+            if (ec == asio::error::eof) {
+              return;
+            }
             if (error_handler_) {
               error_handler_(ec, ActionType::Read);
             }
@@ -374,6 +384,9 @@ class Client {
         sck_, asio::buffer(data),
         [this](boost::system::error_code ec, std::size_t bytes) {
           if (ec) {
+            if (ec == asio::error::eof) {
+              return;
+            }
             if (error_handler_) {
               error_handler_(ec, ActionType::Write);
             }
