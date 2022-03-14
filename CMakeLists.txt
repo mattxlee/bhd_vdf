@@ -100,11 +100,11 @@ set(VDF_LIB_SRCS
   ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
   ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
   )
-add_library(vdf ${VDF_LIB_SRCS})
-target_link_libraries(vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
+add_library(bhd_vdf ${VDF_LIB_SRCS})
+target_link_libraries(bhd_vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
 install(FILES src/vdf_computer.h DESTINATION include)
-install(TARGETS vdf DESTINATION lib)
+install(TARGETS bhd_vdf DESTINATION lib)
 
 set(VDF_SRV_SRCS
   src/vdf_server.cpp
