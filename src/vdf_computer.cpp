@@ -22,7 +22,7 @@ integer const& Integer::Get_integer() const { return *val_; }
 
 std::string Integer::FormatString() const {
   std::stringstream ss;
-  ss << val_->impl;
+  ss << to_string(val_->impl);
   return ss.str();
 }
 
