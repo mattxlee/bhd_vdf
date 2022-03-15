@@ -10,6 +10,8 @@
 int gcd_base_bits = 50;
 int gcd_128_max_iter = 3;
 
+std::ostream& operator<<(std::ostream& os, __mpz_struct const* z) { return os; }
+
 namespace vdf {
 
 namespace types {
