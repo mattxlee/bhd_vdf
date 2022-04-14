@@ -39,6 +39,7 @@ TEST(VDF, VerifyWithGenesisAndNext) {
   auto proof_data = vdf::utils::SerializeProof(proof);
   EXPECT_TRUE(vdf::utils::VerifyProof(D, proof_data, iters));
   EXPECT_FALSE(vdf::utils::VerifyProof(D, proof_data, iters * 2));
+  EXPECT_EQ(proof.y.size(), vdf::FORM_SIZE());
 
   vdf::Computer computer2(D, proof.y);
 
@@ -48,6 +49,7 @@ TEST(VDF, VerifyWithGenesisAndNext) {
   auto proof2_data = vdf::utils::SerializeProof(proof2);
   EXPECT_TRUE(vdf::utils::VerifyProof(
       D, proof2_data, iters, proof2.witness_type, proof.y));
+  EXPECT_EQ(proof2.y.size(), vdf::FORM_SIZE());
 
   vdf::Computer computer3(D, proof2.y);
 

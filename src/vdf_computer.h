@@ -58,6 +58,8 @@ types::Bytes GetDefaultForm();
 
 }  // namespace utils
 
+int FORM_SIZE();
+
 class Computer {
   // Members to initialize the object
   types::Bytes initial_form_;

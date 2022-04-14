@@ -259,6 +259,10 @@ void CreateAndWriteProofOneWeso(
   stopped = true;
 }
 
+int FORM_SIZE() {
+  return BQFC_FORM_SIZE;
+}
+
 void Computer::InitializeComputer() {
   init_gmp();
   if (hasAVX2()) {
