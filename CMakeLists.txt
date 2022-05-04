@@ -87,18 +87,18 @@ add_executable(compile_asm ${COMPILE_ASM_SRC})
 target_compile_definitions(compile_asm PRIVATE ${COMPILE_ASM_DEFS})
 target_link_libraries(compile_asm PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
-add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm DEPENDS compile_asm)
-add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm avx2 DEPENDS compile_asm)
-add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s COMMAND ${CMAKE_BINARY_DIR}/compile_asm avx512 DEPENDS compile_asm)
+add_custom_command(OUTPUT ./asm_compiled.s COMMAND ./compile_asm DEPENDS compile_asm)
+add_custom_command(OUTPUT ./avx2_asm_compiled.s COMMAND ./compile_asm avx2 DEPENDS compile_asm)
+add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./compile_asm avx512 DEPENDS compile_asm)
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ./src/vdf_msgs.proto)
 
 set(VDF_LIB_SRCS
   src/vdf_computer.cpp
   ${CHIAVDF_SRC}
-  ${CMAKE_BINARY_DIR}/asm_compiled.s
-  ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
-  ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
+  ./asm_compiled.s
+  ./avx2_asm_compiled.s
+  ./avx512_asm_compiled.s
   )
 add_library(bhd_vdf ${VDF_LIB_SRCS})
 target_link_libraries(bhd_vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
@@ -111,9 +111,9 @@ set(VDF_SRV_SRCS
   src/vdf_computer.cpp
   src/vdf_net.cpp
   ${CHIAVDF_SRC}
-  ${CMAKE_BINARY_DIR}/asm_compiled.s
-  ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
-  ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
+  ./asm_compiled.s
+  ./avx2_asm_compiled.s
+  ./avx512_asm_compiled.s
   )
 add_executable(vdf_srv
   ${VDF_SRV_SRCS}
@@ -135,9 +135,9 @@ set(VDF_TEST_SRCS
   src/vdf_test.cpp
   src/vdf_computer.cpp
   ${CHIAVDF_SRC}
-  ${CMAKE_BINARY_DIR}/asm_compiled.s
-  ${CMAKE_BINARY_DIR}/avx2_asm_compiled.s
-  ${CMAKE_BINARY_DIR}/avx512_asm_compiled.s
+  ./asm_compiled.s
+  ./avx2_asm_compiled.s
+  ./avx512_asm_compiled.s
   )
 add_executable(vdf_test ${VDF_TEST_SRCS})
 target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS}
