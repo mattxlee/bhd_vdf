@@ -51,10 +51,8 @@ FetchContent_Declare(
   )
 FetchContent_MakeAvailable(chiavdf plog gtest)
 
-set(CHIAVDF_DIR ${CMAKE_BINARY_DIR}/_deps/chiavdf-src)
-
 set(CMAKE_MODULE_PATH
-  ${CHIAVDF_DIR}/src/cmake
+  ${chiavdf_SOURCE_DIR}/src/cmake
   ${CMAKE_MODULE_PATH}
   )
 
@@ -69,18 +67,18 @@ message(STATUS ${plog_SOURCE_DIR})
 include_directories(
   ${GMP_INCLUDE_DIR}
   ${GMPXX_INCLUDE_DIR}
-  ${CHIAVDF_DIR}/src
+  ${chiavdf_SOURCE_DIR}/src
   ${CMAKE_BINARY_DIR}
   ${plog_SOURCE_DIR}/include
   )
 
 set(COMPILE_ASM_SRC
-  ${CHIAVDF_DIR}/src/xgcd_partial.c
-  ${CHIAVDF_DIR}/src/compile_asm.cpp
+  ${chiavdf_SOURCE_DIR}/src/xgcd_partial.c
+  ${chiavdf_SOURCE_DIR}/src/compile_asm.cpp
   )
 
 set(CHIAVDF_SRC
-  ${CHIAVDF_DIR}/src/refcode/lzcnt.c
+  ${chiavdf_SOURCE_DIR}/src/refcode/lzcnt.c
   )
 
 add_executable(compile_asm ${COMPILE_ASM_SRC})
