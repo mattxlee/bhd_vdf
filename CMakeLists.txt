@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(compile_asm)
+project(bhd_vdf)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
