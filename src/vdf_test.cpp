@@ -18,45 +18,43 @@ vdf::types::Bytes challenge{0, 0, 1, 2, 3, 3, 4, 4};
 uint64_t iters{10 * 1024};
 
 TEST(VDF, BytesFromStr) {
-  auto initial_form = vdf::utils::BytesFromStr(initial_form_str);
-  EXPECT_EQ(initial_form.size(), 100);
-  EXPECT_EQ(initial_form[0], 1);
-  EXPECT_EQ(initial_form[1], 0);
-  EXPECT_EQ(initial_form[2], 0xa2);
-  EXPECT_EQ(initial_form[98], 1);
-  EXPECT_EQ(initial_form[97], 5);
-  EXPECT_EQ(initial_form[96], 0xa9);
+    auto initial_form = vdf::utils::BytesFromStr(initial_form_str);
+    EXPECT_EQ(initial_form.size(), 100);
+    EXPECT_EQ(initial_form[0], 1);
+    EXPECT_EQ(initial_form[1], 0);
+    EXPECT_EQ(initial_form[2], 0xa2);
+    EXPECT_EQ(initial_form[98], 1);
+    EXPECT_EQ(initial_form[97], 5);
+    EXPECT_EQ(initial_form[96], 0xa9);
 }
 
 TEST(VDF, VerifyWithGenesisAndNext) {
-  vdf::Computer::InitializeComputer();
-  auto D = vdf::utils::CreateDiscriminant(challenge);
-  vdf::Computer computer(D);
+    vdf::Computer::InitializeComputer();
+    auto D = vdf::utils::CreateDiscriminant(challenge);
+    vdf::Computer computer(D);
 
-  computer.Run(iters);
+    computer.Run(iters);
 
-  vdf::types::Proof proof = computer.GetProof();
-  auto proof_data = vdf::utils::SerializeProof(proof);
-  EXPECT_TRUE(vdf::utils::VerifyProof(D, proof_data, iters));
-  EXPECT_FALSE(vdf::utils::VerifyProof(D, proof_data, iters * 2));
-  EXPECT_EQ(proof.y.size(), vdf::FORM_SIZE());
+    vdf::types::Proof proof = computer.GetProof();
+    auto proof_data = vdf::utils::SerializeProof(proof);
+    EXPECT_TRUE(vdf::utils::VerifyProof(D, proof_data, iters));
+    EXPECT_FALSE(vdf::utils::VerifyProof(D, proof_data, iters * 2));
+    EXPECT_EQ(proof.y.size(), vdf::FORM_SIZE());
 
-  vdf::Computer computer2(D, proof.y);
+    vdf::Computer computer2(D, proof.y);
 
-  computer2.Run(iters);
+    computer2.Run(iters);
 
-  vdf::types::Proof proof2 = computer2.GetProof();
-  auto proof2_data = vdf::utils::SerializeProof(proof2);
-  EXPECT_TRUE(vdf::utils::VerifyProof(
-      D, proof2_data, iters, proof2.witness_type, proof.y));
-  EXPECT_EQ(proof2.y.size(), vdf::FORM_SIZE());
+    vdf::types::Proof proof2 = computer2.GetProof();
+    auto proof2_data = vdf::utils::SerializeProof(proof2);
+    EXPECT_TRUE(vdf::utils::VerifyProof(D, proof2_data, iters, proof2.witness_type, proof.y));
+    EXPECT_EQ(proof2.y.size(), vdf::FORM_SIZE());
 
-  vdf::Computer computer3(D, proof2.y);
+    vdf::Computer computer3(D, proof2.y);
 
-  computer3.Run(iters);
+    computer3.Run(iters);
 
-  auto proof3 = computer3.GetProof();
-  auto proof3_data = vdf::utils::SerializeProof(proof3);
-  EXPECT_TRUE(vdf::utils::VerifyProof(
-      D, proof3_data, iters, proof3.witness_type, proof2.y));
+    auto proof3 = computer3.GetProof();
+    auto proof3_data = vdf::utils::SerializeProof(proof3);
+    EXPECT_TRUE(vdf::utils::VerifyProof(D, proof3_data, iters, proof3.witness_type, proof2.y));
 }

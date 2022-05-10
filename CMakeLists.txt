@@ -4,27 +4,28 @@ project(bhd_vdf)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 enable_language(ASM)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES Darwin)
-  add_compile_definitions(CHIAOSX=1)
+    add_compile_definitions(CHIAOSX=1)
 endif()
 add_compile_definitions(
-  VDF_MODE=0
-  FAST_MACHINE=1
-  )
+    VDF_MODE=0
+    FAST_MACHINE=1
+    )
 
 if (${CMAKE_CXX_COMPILER_ID} MATCHES ^.*Clang.*$)
-  set(NOPIE "-fno-PIE")
+    set(NOPIE "-fno-PIE")
 else()
-  set(NOPIE "-no-pie")
+    set(NOPIE "-no-pie")
 endif()
 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CONF)
 if (NOT CONF MATCHES "debug")
-  set(LTOFLAG " -flto")
-  message(STATUS "LTO is on")
+    set(LTOFLAG " -flto")
+    message(STATUS "LTO is on")
 endif()
 
 set(COMPILE_ASM_LDFLAGS "${NOPIE}${LTOFLAG}")
@@ -35,26 +36,26 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS} -O3")
 
 include(FetchContent)
 FetchContent_Declare(
-  chiavdf
-  GIT_REPOSITORY https://github.com/Chia-Network/chiavdf
-  GIT_TAG 1.0.3
-  )
+    chiavdf
+    GIT_REPOSITORY https://github.com/Chia-Network/chiavdf
+    GIT_TAG 1.0.6
+    )
 FetchContent_Declare(
-  plog
-  GIT_REPOSITORY https://github.com/sergiusthebest/plog
-  GIT_TAG 1.1.6
-  )
+    plog
+    GIT_REPOSITORY https://github.com/sergiusthebest/plog
+    GIT_TAG 1.1.6
+    )
 FetchContent_Declare(
-  gtest
-  GIT_REPOSITORY https://github.com/google/googletest
-  GIT_TAG release-1.11.0
-  )
+    gtest
+    GIT_REPOSITORY https://github.com/google/googletest
+    GIT_TAG release-1.11.0
+    )
 FetchContent_MakeAvailable(chiavdf plog gtest)
 
 set(CMAKE_MODULE_PATH
-  ${chiavdf_SOURCE_DIR}/src/cmake
-  ${CMAKE_MODULE_PATH}
-  )
+    ${chiavdf_SOURCE_DIR}/src/cmake
+    ${CMAKE_MODULE_PATH}
+    )
 
 find_package(GMP REQUIRED)
 find_package(GMPXX REQUIRED)
@@ -65,21 +66,21 @@ find_package(Protobuf REQUIRED)
 message(STATUS ${plog_SOURCE_DIR})
 
 include_directories(
-  ${GMP_INCLUDE_DIR}
-  ${GMPXX_INCLUDE_DIR}
-  ${chiavdf_SOURCE_DIR}/src
-  ${CMAKE_BINARY_DIR}
-  ${plog_SOURCE_DIR}/include
-  )
+    ${GMP_INCLUDE_DIR}
+    ${GMPXX_INCLUDE_DIR}
+    ${chiavdf_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}
+    ${plog_SOURCE_DIR}/include
+    )
 
 set(COMPILE_ASM_SRC
-  ${chiavdf_SOURCE_DIR}/src/xgcd_partial.c
-  ${chiavdf_SOURCE_DIR}/src/compile_asm.cpp
-  )
+    ${chiavdf_SOURCE_DIR}/src/xgcd_partial.c
+    ${chiavdf_SOURCE_DIR}/src/compile_asm.cpp
+    )
 
 set(CHIAVDF_SRC
-  ${chiavdf_SOURCE_DIR}/src/refcode/lzcnt.c
-  )
+    ${chiavdf_SOURCE_DIR}/src/refcode/lzcnt.c
+    )
 
 add_executable(compile_asm ${COMPILE_ASM_SRC})
 target_compile_definitions(compile_asm PRIVATE ${COMPILE_ASM_DEFS})
@@ -92,12 +93,12 @@ add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./compile_asm avx512 D
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ./src/vdf_msgs.proto)
 
 set(VDF_LIB_SRCS
-  src/vdf_computer.cpp
-  ${CHIAVDF_SRC}
-  ./asm_compiled.s
-  ./avx2_asm_compiled.s
-  ./avx512_asm_compiled.s
-  )
+    src/vdf_computer.cpp
+    ${CHIAVDF_SRC}
+    ./asm_compiled.s
+    ./avx2_asm_compiled.s
+    ./avx512_asm_compiled.s
+    )
 add_library(bhd_vdf ${VDF_LIB_SRCS})
 target_link_libraries(bhd_vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
@@ -105,49 +106,50 @@ install(FILES src/vdf_computer.h DESTINATION include)
 install(TARGETS bhd_vdf DESTINATION lib)
 
 set(VDF_SRV_SRCS
-  src/vdf_server.cpp
-  src/vdf_computer.cpp
-  src/vdf_net.cpp
-  ${CHIAVDF_SRC}
-  ./asm_compiled.s
-  ./avx2_asm_compiled.s
-  ./avx512_asm_compiled.s
-  )
+    src/vdf_server.cpp
+    src/vdf_computer.cpp
+    src/vdf_net.cpp
+    ${CHIAVDF_SRC}
+    ./asm_compiled.s
+    ./avx2_asm_compiled.s
+    ./avx512_asm_compiled.s
+    )
 add_executable(vdf_srv
-  ${VDF_SRV_SRCS}
-  ${PROTO_SRCS}
-  )
+    ${VDF_SRV_SRCS}
+    ${PROTO_SRCS}
+    )
 target_link_libraries(vdf_srv PRIVATE
-  ${COMPILE_ASM_LDFLAGS}
-  ${GMP_LIBRARIES}
-  ${GMPXX_LIBRARIES}
-  ${CMAKE_THREAD_LIBS_INIT}
-  Boost::program_options
-  protobuf::libprotobuf
-  )
+    ${COMPILE_ASM_LDFLAGS}
+    ${GMP_LIBRARIES}
+    ${GMPXX_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+    Boost::program_options
+    protobuf::libprotobuf
+    )
 
 find_package(GTest REQUIRED)
 enable_testing()
 # VDF test target
 set(VDF_TEST_SRCS
-  src/vdf_test.cpp
-  src/vdf_computer.cpp
-  ${CHIAVDF_SRC}
-  ./asm_compiled.s
-  ./avx2_asm_compiled.s
-  ./avx512_asm_compiled.s
-  )
+    src/vdf_test.cpp
+    src/vdf_computer.cpp
+    ${CHIAVDF_SRC}
+    ./asm_compiled.s
+    ./avx2_asm_compiled.s
+    ./avx512_asm_compiled.s
+    )
 add_executable(vdf_test ${VDF_TEST_SRCS})
 target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS}
-  GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
+    GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 add_test(vdf_test COMMAND vdf_test)
 # VDF server test target
 set(VDF_SRV_TEST_SRCS
-  src/vdf_net.cpp
-  src/vdf_srv_test.cpp
-  ${PROTO_SRCS}
-  )
+    src/vdf_net.cpp
+    src/vdf_srv_test.cpp
+    ${PROTO_SRCS}
+    )
 add_executable(vdf_srv_test ${VDF_SRV_TEST_SRCS})
-target_link_libraries(vdf_srv_test PRIVATE GTest::gtest GTest::gtest_main
-  protobuf::libprotobuf)
+target_link_libraries(vdf_srv_test PRIVATE
+    GTest::gtest GTest::gtest_main
+    protobuf::libprotobuf)
 add_test(vdf_srv_test COMMAND vdf_srv_test)
