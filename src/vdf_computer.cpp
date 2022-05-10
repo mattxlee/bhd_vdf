@@ -254,7 +254,7 @@ Computer::Computer(types::Integer D, types::Bytes initial_form)
 
 Computer::~Computer() {}
 
-void Computer::Run(uint64_t iter) {
+void Computer::Run(uint64_t iter, std::atomic_bool& stop) {
     try {
         std::lock_guard<std::mutex> __lock_guard(m_);
 
@@ -271,12 +271,11 @@ void Computer::Run(uint64_t iter) {
         print("form initialized");
         std::unique_ptr<OneWesolowskiCallback> weso(new OneWesolowskiCallback(D, f, iter));
         FastStorage* fast_storage = NULL;
-        stopped_ = false;
+        stop = false;
         // Starting the calculation
-        std::thread vdf_worker(
-            RepeatedSquare, f, std::ref(D), std::ref(L), weso.get(), fast_storage, std::ref(stopped_));
+        std::thread vdf_worker(RepeatedSquare, f, std::ref(D), std::ref(L), weso.get(), fast_storage, std::ref(stop));
         std::thread th_prover(
-            CreateAndWriteProofOneWeso, iter, std::ref(D), f, weso.get(), std::ref(stopped_), std::ref(proof_));
+            CreateAndWriteProofOneWeso, iter, std::ref(D), f, weso.get(), std::ref(stop), std::ref(proof_));
         iters_ = iter;  // Assign the number of iterations
         // Calculation is finished
         vdf_worker.join();

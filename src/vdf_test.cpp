@@ -33,7 +33,8 @@ TEST(VDF, VerifyWithGenesisAndNext) {
     auto D = vdf::utils::CreateDiscriminant(challenge);
     vdf::Computer computer(D);
 
-    computer.Run(iters);
+    std::atomic_bool stop_flag;
+    computer.Run(iters, stop_flag);
 
     vdf::types::Proof proof = computer.GetProof();
     auto proof_data = vdf::utils::SerializeProof(proof);
@@ -43,7 +44,7 @@ TEST(VDF, VerifyWithGenesisAndNext) {
 
     vdf::Computer computer2(D, proof.y);
 
-    computer2.Run(iters);
+    computer2.Run(iters, stop_flag);
 
     vdf::types::Proof proof2 = computer2.GetProof();
     auto proof2_data = vdf::utils::SerializeProof(proof2);
@@ -52,7 +53,7 @@ TEST(VDF, VerifyWithGenesisAndNext) {
 
     vdf::Computer computer3(D, proof2.y);
 
-    computer3.Run(iters);
+    computer3.Run(iters, stop_flag);
 
     auto proof3 = computer3.GetProof();
     auto proof3_data = vdf::utils::SerializeProof(proof3);

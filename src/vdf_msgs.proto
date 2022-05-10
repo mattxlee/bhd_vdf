@@ -24,6 +24,5 @@ message VDFResult {
     uint64 iters = 3;
     bytes y = 4;
     bytes proof = 5;
-    double begin_time = 6;
-    double end_time = 7;
+    double duration = 6;
 }

@@ -1,17 +1,111 @@
 #include <iostream>
+#include <chrono>
 
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 #include "vdf_net.hpp"
+#include "vdf_computer.h"
+
+using vdf::types::Bytes;
 
 struct Arguments {
     std::string listening_addr;
     unsigned short listening_port;
 };
 
+Bytes to_bytes(std::string const& str) {
+    Bytes res(str.begin(), str.end());
+    return res;
+}
+
+std::string to_string(Bytes const& bytes) {
+    std::string res(reinterpret_cast<char const*>(bytes.data()), bytes.size());
+    return res;
+}
+
+class VDFComputerThread {
+public:
+    VDFComputerThread(
+        Bytes infusion, Bytes x, uint64_t iters, net::SessionPtr psession, std::function<void()> session_end_handler)
+        : infusion_(std::move(infusion)), x_(std::move(x)), iters_(iters), psession_(psession) {}
+
+    void run() {
+        require_interruption_ = false;  // reset the flag to `false`
+        auto D = vdf::utils::CreateDiscriminant(infusion_);
+        pcomputer_.reset(new vdf::Computer(D, x_));
+        auto begin_time = std::chrono::system_clock::now();
+        pcomputer_->Run(iters_, stop_flag_);
+        auto end_time = std::chrono::system_clock::now();
+        if (require_interruption_) {
+            // We do not provide proof on this status
+            return;
+        }
+        vdf::types::Proof proof = pcomputer_->GetProof();
+        // Prepare the reply message
+        auto result = std::make_unique<VDFResult>();
+        result->set_infusion(to_string(infusion_));
+        result->set_x(to_string(x_));
+        result->set_iters(iters_);
+        result->set_y(to_string(proof.y));
+        result->set_proof(to_string(proof.proof));
+        auto duration = end_time - begin_time;
+        result->set_duration(duration.count());
+        // Send proof to session
+        psession_->write_message(result.get(), net::MSGID_VDFRESULT);
+        // Mark the thread is end and notify the manager
+        session_end_handler_();
+    }
+
+    void stop() {
+        if (pcomputer_ == nullptr) {
+            // The computer doesn't exist
+            return;
+        }
+        require_interruption_ = true;
+        stop_flag_ = true;
+    }
+
+private:
+    Bytes infusion_;
+    Bytes x_;
+    uint64_t iters_;
+    std::atomic_bool stop_flag_;
+    std::atomic_bool require_interruption_{false};
+    net::SessionPtr psession_;
+    std::function<void()> session_end_handler_;
+    std::unique_ptr<vdf::Computer> pcomputer_;
+};
+using VDFComputerThreadPtr = std::shared_ptr<VDFComputerThread>;
+
+class VDFComputerManager {
+public:
+    void handle_session_end(net::SessionPtr psession) {}
+
+    void start_new(Bytes infusion, Bytes x, uint64_t iters, net::SessionPtr psession) {
+        auto pthread = std::make_shared<VDFComputerThread>(
+            std::move(infusion), std::move(x), iters, psession, [this, psession]() { handle_session_end(psession); });
+        pthread->run();
+        {
+            std::lock_guard<std::mutex> __lock_guard(threads_mtx_);
+            threads_.push_back(pthread);
+        }
+    }
+
+private:
+    std::mutex threads_mtx_;
+    std::vector<VDFComputerThreadPtr> threads_;
+};
+
 void handle_session_message(net::Message const* msg, uint8_t msg_id, net::SessionPtr session) {
-    // TODO handle message here
+    if (msg_id == net::MSGID_REQUESTVDF) {
+        // Start a new thread to calculate VDF proof
+        auto request_vdf_msg = static_cast<RequestVDF const*>(msg);
+        Bytes infusion = to_bytes(request_vdf_msg->infusion());
+        Bytes x = to_bytes(request_vdf_msg->x());
+        uint64_t iters = request_vdf_msg->iters();
+        // Start a new thread to calculate VDF proof
+    }
 }
 
 void handle_connect_error(boost::system::error_code ec) { PLOG_ERROR << "error on accept a new connection - " << ec; }

@@ -64,7 +64,6 @@ class Computer {
     types::Bytes initial_form_;
     types::Integer D_;
     // Flags
-    std::atomic<bool> stopped_{false};
     std::mutex m_;
     // Results
     uint64_t iters_{0};
@@ -79,7 +78,7 @@ public:
 
     ~Computer();
 
-    void Run(uint64_t iters);
+    void Run(uint64_t iters, std::atomic_bool& stop);
 
     void SetStop(bool stopped);
 
