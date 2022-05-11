@@ -236,7 +236,7 @@ class Session {
     }
 
 public:
-    Session(asio::io_context& ioc, MessageFactoryVec factories) : sck_(ioc), analyzer_(std::move(factories)) {}
+    Session(tcp::socket sck, MessageFactoryVec factories) : sck_(std::move(sck)), analyzer_(std::move(factories)) {}
 
     tcp::socket& get_socket() { return sck_; }
 
@@ -279,8 +279,7 @@ class Server {
     SessionErrorHandler session_error_handler_;
 
     void accept_next_socket() {
-        auto session_ptr = std::make_shared<Session>(ioc_, factories_);
-        acceptor_.async_accept(session_ptr->get_socket(), [this, session_ptr](boost::system::error_code ec) {
+        acceptor_.async_accept(asio::make_strand(ioc_), [this](boost::system::error_code ec, tcp::socket sck) {
             if (ec) {
                 PLOG_ERROR << ec.message();
                 if (connect_error_handler_) {
@@ -290,6 +289,7 @@ class Server {
             }
             PLOG_INFO << "new connection";
             // Prepare session
+            auto session_ptr = std::make_shared<Session>(std::move(sck), factories_);
             session_ptr->set_message_handler([this, session_ptr](Message const* msg, uint8_t msg_id) {
                 session_message_handler_(msg, msg_id, session_ptr);
             });
@@ -314,7 +314,10 @@ class Server {
 
 public:
     Server(boost::asio::io_context& ioc, tcp::endpoint const& endpoint, MessageFactoryVec factories)
-        : ioc_(ioc), endpoint_(std::move(endpoint)), acceptor_(ioc), factories_(std::move(factories)) {}
+        : ioc_(ioc),
+          endpoint_(std::move(endpoint)),
+          acceptor_(asio::make_strand(ioc_)),
+          factories_(std::move(factories)) {}
 
     void set_session_message_handler(SessionMessageHandler message_handler) {
         session_message_handler_ = std::move(message_handler);
