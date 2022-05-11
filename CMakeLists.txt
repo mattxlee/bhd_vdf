@@ -109,6 +109,7 @@ set(VDF_SRV_SRCS
     src/vdf_server.cpp
     src/vdf_computer.cpp
     src/vdf_net.cpp
+    src/vdf_utils.cpp
     ${CHIAVDF_SRC}
     ./asm_compiled.s
     ./avx2_asm_compiled.s

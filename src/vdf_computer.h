@@ -8,6 +8,8 @@
 #include <thread>
 #include <vector>
 
+#include "vdf_types.h"
+
 struct integer;
 
 namespace vdf {
@@ -15,8 +17,6 @@ namespace vdf {
 int const DEFAULT_DISC_SIZE = 1024;
 
 namespace types {
-
-using Bytes = std::vector<uint8_t>;
 
 class Integer {
     std::shared_ptr<integer> val_;
