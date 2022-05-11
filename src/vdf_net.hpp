@@ -57,6 +57,21 @@ int const MSGID_REQUESTVDF = 10;
 int const MSGID_REQUESTVDF_REPLY = 11;
 int const MSGID_VDFRESULT = 20;
 
+inline std::string msg_id_to_string(int msg_id) {
+    if (msg_id == MSGID_PING) {
+        return "MSGID_PING";
+    } else if (msg_id == MSGID_PONG) {
+        return "MSGID_PONG";
+    } else if (msg_id == MSGID_REQUESTVDF) {
+        return "MSGID_REQUESTVDF";
+    } else if (msg_id == MSGID_REQUESTVDF_REPLY) {
+        return "MSGID_REQUESTVDF_REPLY";
+    } else if (msg_id == MSGID_VDFRESULT) {
+        return "MSGID_VDFRESULT";
+    }
+    return "(invalid msg_id)";
+}
+
 using MsgFactory_Ping = MessageFactoryTmpl<MSGID_PING, Ping>;
 using MsgFactory_Pong = MessageFactoryTmpl<MSGID_PONG, Pong>;
 using MsgFactory_RequestVDF = MessageFactoryTmpl<MSGID_REQUESTVDF, RequestVDF>;
