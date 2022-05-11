@@ -101,7 +101,17 @@ TEST_F(ServerTest, PingPong) {
 TEST_F(ServerTest, VdfCalculation) {
     srv->set_session_message_handler([](net::Message const* pmsg, uint8_t msg_id, net::SessionPtr psession) {
         PLOG_INFO << "received new message from server, msg_id=" << msg_id;
-        if (msg_id == net::MSGID_VDFRESULT) {
+        if (msg_id == net::MSGID_REQUESTVDF) {
+            // TODO start new Vdf computer
+        }
+    });
+    PLOG_INFO << "starting the client";
+    asio::io_context ioc;
+    net::Client client(
+        ioc, {std::make_shared<net::MsgFactory_RequestVDFReply>(), std::make_shared<net::MsgFactory_VDFResult>()});
+    client.set_message_handler([&client](net::Message const* pmsg, uint8_t msg_id) {
+        EXPECT_EQ(msg_id, net::MSGID_PONG);
+        if (msg_id == net::MSGID_PONG) {
             auto pmsg_result = static_cast<VDFResult const*>(pmsg);
             Bytes infusion = to_bytes(pmsg_result->infusion());
             auto D = vdf::utils::CreateDiscriminant(infusion);
@@ -113,6 +123,26 @@ TEST_F(ServerTest, VdfCalculation) {
             proof_s.proof = to_bytes(pmsg_result->proof());
             Bytes proof = vdf::utils::SerializeProof(proof_s);
             EXPECT_TRUE(vdf::utils::VerifyProof(D, proof, iters, 0, x));
+            // Now we close the peer
+            PLOG_INFO << "Vdf result has been received and verified";
+            client.close();
         }
     });
+    client.set_connect_handler([&client](bool succ) {
+        PLOG_INFO << "connected to server, succ=" << succ;
+        EXPECT_TRUE(succ);
+        // send message to request new Vdf computing
+        auto req = std::make_unique<RequestVDF>();
+        Bytes infusion(32, '\0'), x(32, '\0');
+        req->set_infusion(to_string(infusion));
+        req->set_x(to_string(x));
+        req->set_iters(10000);
+        client.write_message(req.get(), net::MSGID_REQUESTVDF);
+        PLOG_INFO << "Vdf is required";
+    });
+    client.set_error_handler([](boost::system::error_code ec, net::ActionType type) { PLOG_ERROR << ec.message(); });
+    PLOG_INFO << "establishing a new connection to server";
+    client.connect(tcp::endpoint(asio::ip::address::from_string(SZ_LOCAL_HOST), TEST_PORT));
+    ioc.run();
+    PLOG_INFO << "client ioc is exited";
 }
