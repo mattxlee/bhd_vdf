@@ -109,7 +109,11 @@ private:
     std::vector<VDFComputerThreadPtr> threads_;
 };
 
-void handle_session_message(net::Message const* msg, uint8_t msg_id, net::SessionPtr session) {
+static VDFComputerManager g_computer_manager;
+
+void handle_session_message(net::Message const* msg, uint8_t msg_id, net::SessionPtr psession, net::Server& srv) {
+    PLOG_INFO << "received message " << net::msg_id_to_string(msg_id) << " from session " << std::hex
+              << address_to_string(psession.get());
     if (msg_id == net::MSGID_REQUESTVDF) {
         // Start a new thread to calculate VDF proof
         auto request_vdf_msg = static_cast<RequestVDF const*>(msg);
@@ -117,6 +121,7 @@ void handle_session_message(net::Message const* msg, uint8_t msg_id, net::Sessio
         Bytes x = to_bytes(request_vdf_msg->x());
         uint64_t iters = request_vdf_msg->iters();
         // Start a new thread to calculate VDF proof
+        g_computer_manager.start_new(std::move(infusion), std::move(x), iters, psession);
     }
 }
 
@@ -157,7 +162,9 @@ int main(int argc, const char* argv[]) {
     net::Server srv(
         ioc, tcp::endpoint(addr, args.listening_port),
         {std::make_shared<net::MsgFactory_Ping>(), std::make_shared<net::MsgFactory_RequestVDF>()});
-    srv.set_session_message_handler(handle_session_message);
+    srv.set_session_message_handler([&srv](net::Message const* pmsg, uint8_t msg_id, net::SessionPtr psession) {
+        handle_session_message(pmsg, msg_id, psession, srv);
+    });
     srv.set_connect_error_handler(handle_connect_error);
     srv.set_session_error_handler(handle_session_error);
     srv.run();
