@@ -16,7 +16,7 @@ TEST(VDFNet, SerializeUnserialize) {
     auto packet = builder.build_message(&ping, net::MSGID_PING);
     EXPECT_TRUE(!packet.empty());
 
-    net::PacketAnalyzer analyzer({std::make_shared<net::MsgFactory_Ping>()});
+    net::PacketAnalyzer<> analyzer({std::make_shared<net::MsgFactory_Ping>()});
     analyzer.write(packet.data(), packet.size());
     net::Message* p;
     std::tie(p, std::ignore) = analyzer.analyze();
