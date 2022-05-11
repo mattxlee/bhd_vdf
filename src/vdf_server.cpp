@@ -41,6 +41,24 @@ public:
         : infusion_(std::move(infusion)), x_(std::move(x)), iters_(iters), psession_(psession) {}
 
     void run() {
+        assert(pthread_ == nullptr);
+        pthread_.reset(new std::thread([this]() { thread_proc(); }));
+    }
+
+    void stop() {
+        if (pthread_ == nullptr || pcomputer_ == nullptr) {
+            // The computer or the thread doesn't exist
+            return;
+        }
+        require_interruption_ = true;
+        stop_flag_ = true;
+
+        // Join the thread
+        pthread_->join();
+    }
+
+private:
+    void thread_proc() {
         require_interruption_ = false;  // reset the flag to `false`
         auto D = vdf::utils::CreateDiscriminant(infusion_);
         pcomputer_.reset(new vdf::Computer(D, x_));
@@ -67,19 +85,11 @@ public:
         session_end_handler_();
     }
 
-    void stop() {
-        if (pcomputer_ == nullptr) {
-            // The computer doesn't exist
-            return;
-        }
-        require_interruption_ = true;
-        stop_flag_ = true;
-    }
-
 private:
     Bytes infusion_;
     Bytes x_;
     uint64_t iters_;
+    std::unique_ptr<std::thread> pthread_;
     std::atomic_bool stop_flag_;
     std::atomic_bool require_interruption_{false};
     net::SessionPtr psession_;
