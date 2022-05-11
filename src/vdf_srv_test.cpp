@@ -5,6 +5,11 @@
 
 #include "vdf_net.hpp"
 
+#include "vdf_utils.h"
+#include "vdf_computer.h"
+
+using vdf::types::Bytes;
+
 plog::ConsoleAppender<plog::TxtFormatter> console_appender;
 
 TEST(VDFNet, InitialLog) { plog::init(plog::Severity::info, &console_appender); }
@@ -91,4 +96,23 @@ TEST_F(ServerTest, PingPong) {
     client.connect(tcp::endpoint(asio::ip::address::from_string(SZ_LOCAL_HOST), TEST_PORT));
     ioc.run();
     PLOG_INFO << "client ioc is exited";
+}
+
+TEST_F(ServerTest, VdfCalculation) {
+    srv->set_session_message_handler([](net::Message const* pmsg, uint8_t msg_id, net::SessionPtr psession) {
+        PLOG_INFO << "received new message from server, msg_id=" << msg_id;
+        if (msg_id == net::MSGID_VDFRESULT) {
+            auto pmsg_result = static_cast<VDFResult const*>(pmsg);
+            Bytes infusion = to_bytes(pmsg_result->infusion());
+            auto D = vdf::utils::CreateDiscriminant(infusion);
+            Bytes x = to_bytes(pmsg_result->x());
+            uint64_t iters = pmsg_result->iters();
+            double duration = pmsg_result->duration();
+            vdf::types::Proof proof_s;
+            proof_s.y = to_bytes(pmsg_result->y());
+            proof_s.proof = to_bytes(pmsg_result->proof());
+            Bytes proof = vdf::utils::SerializeProof(proof_s);
+            EXPECT_TRUE(vdf::utils::VerifyProof(D, proof, iters, 0, x));
+        }
+    });
 }

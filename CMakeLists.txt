@@ -146,11 +146,19 @@ add_test(vdf_test COMMAND vdf_test)
 # VDF server test target
 set(VDF_SRV_TEST_SRCS
     src/vdf_net.cpp
+    src/vdf_computer.cpp
+    src/vdf_utils.cpp
     src/vdf_srv_test.cpp
+    ${CHIAVDF_SRC}
     ${PROTO_SRCS}
+    ./asm_compiled.s
+    ./avx2_asm_compiled.s
+    ./avx512_asm_compiled.s
     )
 add_executable(vdf_srv_test ${VDF_SRV_TEST_SRCS})
 target_link_libraries(vdf_srv_test PRIVATE
-    GTest::gtest GTest::gtest_main
-    protobuf::libprotobuf)
+    ${COMPILE_ASM_LDFLAGS}
+    GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
+    protobuf::libprotobuf
+    )
 add_test(vdf_srv_test COMMAND vdf_srv_test)
