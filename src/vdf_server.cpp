@@ -1,8 +1,12 @@
 #include <iostream>
 #include <chrono>
+#include <sstream>
 
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
+
+#include <plog/Init.h>
+#include <plog/Appenders/ConsoleAppender.h>
 
 #include "vdf_net.hpp"
 #include "vdf_computer.h"
@@ -17,6 +21,12 @@ struct Arguments {
 Bytes to_bytes(std::string const& str) {
     Bytes res(str.begin(), str.end());
     return res;
+}
+
+std::string address_to_string(void* p) {
+    std::stringstream ss;
+    ss << std::hex << "0x" << reinterpret_cast<uint64_t>(p);
+    return ss.str();
 }
 
 std::string to_string(Bytes const& bytes) {
@@ -86,6 +96,8 @@ public:
         auto pthread = std::make_shared<VDFComputerThread>(
             std::move(infusion), std::move(x), iters, psession, [this, psession]() { handle_session_end(psession); });
         pthread->run();
+        PLOG_ERROR << "new thread " << address_to_string(pthread.get()) << " on session "
+                   << address_to_string(psession.get());
         {
             std::lock_guard<std::mutex> __lock_guard(threads_mtx_);
             threads_.push_back(pthread);
@@ -110,8 +122,9 @@ void handle_session_message(net::Message const* msg, uint8_t msg_id, net::Sessio
 
 void handle_connect_error(boost::system::error_code ec) { PLOG_ERROR << "error on accept a new connection - " << ec; }
 
-void handle_session_error(boost::system::error_code ec, net::ActionType action_type, net::SessionPtr session) {
-    PLOG_ERROR << "error on session - on " << to_string(action_type) << " - " << ec;
+void handle_session_error(boost::system::error_code ec, net::ActionType action_type, net::SessionPtr psession) {
+    PLOG_ERROR << "session " << address_to_string(psession.get()) << " action: " << to_string(action_type)
+               << " error: " << ec.message();
 }
 
 int main(int argc, const char* argv[]) {
