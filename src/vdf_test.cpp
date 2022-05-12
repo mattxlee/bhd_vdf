@@ -12,7 +12,7 @@ char const* initial_form_str =
     "c1de8e234da9050100";
 
 // A challenge infuse to the calculation
-vdf::types::Bytes challenge{0, 0, 1, 2, 3, 3, 4, 4};
+Bytes challenge{0, 0, 1, 2, 3, 3, 4, 4};
 
 // the number of iterations we want to run
 uint64_t iters{10 * 1024};

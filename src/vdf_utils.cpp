@@ -2,8 +2,6 @@
 
 #include <sstream>
 
-using vdf::types::Bytes;
-
 Bytes to_bytes(std::string const& str) {
     Bytes res(str.begin(), str.end());
     return res;

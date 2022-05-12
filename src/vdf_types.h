@@ -5,10 +5,6 @@
 
 #include <cstdint>
 
-namespace vdf::types {
-
 using Bytes = std::vector<uint8_t>;
-
-} // namespace vdf::types
 
 #endif

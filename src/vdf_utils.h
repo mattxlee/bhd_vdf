@@ -5,10 +5,10 @@
 
 #include "vdf_types.h"
 
-vdf::types::Bytes to_bytes(std::string const& str);
+Bytes to_bytes(std::string const& str);
 
 std::string address_to_string(void* p);
 
-std::string to_string(vdf::types::Bytes const& bytes);
+std::string to_string(Bytes const& bytes);
 
 #endif

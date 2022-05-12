@@ -5,10 +5,10 @@
 
 #include "vdf_net.hpp"
 
+#include "vdf_types.h"
 #include "vdf_utils.h"
 #include "vdf_computer.h"
-
-using vdf::types::Bytes;
+#include "vdf_computer_thread.hpp"
 
 plog::ConsoleAppender<plog::TxtFormatter> console_appender;
 

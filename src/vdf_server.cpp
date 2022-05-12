@@ -9,13 +9,12 @@ namespace po = boost::program_options;
 #include <plog/Init.h>
 #include <plog/Appenders/ConsoleAppender.h>
 
+#include "vdf_types.h"
 #include "vdf_net.hpp"
 #include "vdf_utils.h"
 
 #include "vdf_computer.h"
 #include "vdf_computer_thread.hpp"
-
-using vdf::types::Bytes;
 
 struct Arguments {
     std::string listening_addr;

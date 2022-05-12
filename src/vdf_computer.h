@@ -32,8 +32,8 @@ public:
 };
 
 struct Proof {
-    types::Bytes y;
-    types::Bytes proof;
+    Bytes y;
+    Bytes proof;
     uint8_t witness_type{0};
 };
 
@@ -41,19 +41,18 @@ struct Proof {
 
 namespace utils {
 
-types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size = DEFAULT_DISC_SIZE);
+types::Integer CreateDiscriminant(Bytes const& challenge, int disc_size = DEFAULT_DISC_SIZE);
 
-types::Bytes ConnectBytes(types::Bytes const& lhs, types::Bytes const& rhs);
+Bytes ConnectBytes(Bytes const& lhs, Bytes const& rhs);
 
-types::Bytes SerializeProof(types::Proof const& proof);
+Bytes SerializeProof(types::Proof const& proof);
 
 bool VerifyProof(
-    types::Integer const& D, types::Bytes const& proof, uint64_t iters, uint8_t witness_type = 0,
-    types::Bytes const& x = {0x08});
+    types::Integer const& D, Bytes const& proof, uint64_t iters, uint8_t witness_type = 0, Bytes const& x = {0x08});
 
-types::Bytes BytesFromStr(std::string const& str);
+Bytes BytesFromStr(std::string const& str);
 
-types::Bytes GetDefaultForm();
+Bytes GetDefaultForm();
 
 }  // namespace utils
 
@@ -61,7 +60,7 @@ int FORM_SIZE();
 
 class Computer {
     // Members to initialize the object
-    types::Bytes initial_form_;
+    Bytes initial_form_;
     types::Integer D_;
     // Flags
     std::mutex m_;
@@ -74,7 +73,7 @@ public:
 
     explicit Computer(types::Integer D);
 
-    Computer(types::Integer D, types::Bytes initial_form);
+    Computer(types::Integer D, Bytes initial_form);
 
     ~Computer();
 

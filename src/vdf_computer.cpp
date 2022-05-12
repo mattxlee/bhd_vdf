@@ -32,21 +32,20 @@ std::string Integer::FormatString() const {
 
 namespace utils {
 
-types::Integer CreateDiscriminant(types::Bytes const& challenge, int disc_size) {
-    return types::Integer(::CreateDiscriminant(const_cast<types::Bytes&>(challenge), disc_size));
+types::Integer CreateDiscriminant(Bytes const& challenge, int disc_size) {
+    return types::Integer(::CreateDiscriminant(const_cast<Bytes&>(challenge), disc_size));
 }
 
-types::Bytes ConnectBytes(types::Bytes const& lhs, types::Bytes const& rhs) {
-    types::Bytes res(lhs.size() + rhs.size());
+Bytes ConnectBytes(Bytes const& lhs, Bytes const& rhs) {
+    Bytes res(lhs.size() + rhs.size());
     memcpy(res.data(), lhs.data(), lhs.size());
     memcpy(res.data() + lhs.size(), rhs.data(), rhs.size());
     return res;
 }
 
-types::Bytes SerializeProof(types::Proof const& proof) { return ConnectBytes(proof.y, proof.proof); }
+Bytes SerializeProof(types::Proof const& proof) { return ConnectBytes(proof.y, proof.proof); }
 
-bool VerifyProof(
-    types::Integer const& D, types::Bytes const& proof, uint64_t iters, uint8_t witness_type, types::Bytes const& x) {
+bool VerifyProof(types::Integer const& D, Bytes const& proof, uint64_t iters, uint8_t witness_type, Bytes const& x) {
     return CheckProofOfTimeNWesolowski(
         D.Get_integer(), x.data(), proof.data(), proof.size(), iters, DEFAULT_DISC_SIZE, witness_type);
 }
@@ -61,7 +60,7 @@ uint8_t ValueFromHexChar(char ch) {
     return std::distance(std::begin(hex), it);
 }
 
-types::Bytes BytesFromStr(std::string const& str) {
+Bytes BytesFromStr(std::string const& str) {
     if (str.size() % 2 != 0) {
         throw std::runtime_error("invalid hex string, the number of length cannot be divided by 2");
     }
@@ -74,8 +73,8 @@ types::Bytes BytesFromStr(std::string const& str) {
     return res;
 }
 
-types::Bytes GetDefaultForm() {
-    types::Bytes default_form(100, 0);
+Bytes GetDefaultForm() {
+    Bytes default_form(100, 0);
     default_form[0] = 8;
     return default_form;
 }
@@ -249,8 +248,7 @@ void Computer::InitializeComputer() {
 
 Computer::Computer(types::Integer D) : D_(std::move(D)) {}
 
-Computer::Computer(types::Integer D, types::Bytes initial_form)
-    : D_(std::move(D)), initial_form_(std::move(initial_form)) {}
+Computer::Computer(types::Integer D, Bytes initial_form) : D_(std::move(D)), initial_form_(std::move(initial_form)) {}
 
 Computer::~Computer() {}
 
