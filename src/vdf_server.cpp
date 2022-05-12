@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <sstream>
+#include <optional>
 
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
@@ -21,17 +22,40 @@ struct Arguments {
     unsigned short listening_port;
 };
 
-void handle_session_message(net::Message const* msg, uint8_t msg_id, net::SessionPtr psession, net::Server& srv) {
+void handle_session_message(net::Message const* pmsg, uint8_t msg_id, net::SessionPtr psession, net::Server& srv) {
     PLOG_INFO << "received message " << net::msg_id_to_string(msg_id) << " from session " << std::hex
               << address_to_string(psession.get());
-    if (msg_id == net::MSGID_REQUESTVDF) {
+    if (msg_id == net::MSGID_PING) {
+        // Send PONG back
+        auto pmsg_ping = static_cast<Ping const*>(pmsg);
+        int32_t id = pmsg_ping->id();
+        auto pmsg_pong = std::make_unique<Pong>();
+        pmsg_pong->set_reply_id(id);
+        psession->write_message(pmsg_pong.get(), net::MSGID_PONG);
+    } else if (msg_id == net::MSGID_REQUESTVDF) {
         // Start a new thread to calculate VDF proof
-        auto request_vdf_msg = static_cast<RequestVDF const*>(msg);
+        auto request_vdf_msg = static_cast<RequestVDF const*>(pmsg);
         Bytes infusion = to_bytes(request_vdf_msg->infusion());
         Bytes x = to_bytes(request_vdf_msg->x());
         uint64_t iters = request_vdf_msg->iters();
         // Start a new thread to calculate VDF proof
-        g_computer_manager.start_new(std::move(infusion), std::move(x), iters, psession);
+        auto pthread = std::make_shared<VDFComputerThread>(
+            std::move(infusion), std::move(x), iters, [psession](std::optional<VDFComputerThread::Result> result) {
+                if (!result) {
+                    // We don't have a valid result, skip
+                    PLOG_ERROR << "VDF computer thread is finished without a valid result";
+                    return;
+                }
+                // Prepare the reply message
+                auto pmsg_reply = std::make_unique<VDFResult>();
+                pmsg_reply->set_infusion(to_string(result->infusion));
+                pmsg_reply->set_x(to_string(result->x));
+                pmsg_reply->set_iters(result->iters);
+                pmsg_reply->set_y(to_string(result->y));
+                pmsg_reply->set_proof(to_string(result->proof));
+                pmsg_reply->set_duration(result->duration);
+                psession->write_message(pmsg_reply.get(), net::MSGID_VDFRESULT);
+            });
     }
 }
 

@@ -102,7 +102,13 @@ TEST_F(ServerTest, VdfCalculation) {
     srv->set_session_message_handler([](net::Message const* pmsg, uint8_t msg_id, net::SessionPtr psession) {
         PLOG_INFO << "received new message from server, msg_id=" << msg_id;
         if (msg_id == net::MSGID_REQUESTVDF) {
-            // TODO start new Vdf computer
+            // start new Vdf computer
+            auto pmsg_request_vdf = static_cast<RequestVDF const*>(pmsg);
+            Bytes infusion = to_bytes(pmsg_request_vdf->infusion());
+            Bytes x = to_bytes(pmsg_request_vdf->x());
+            uint64_t iters = pmsg_request_vdf->iters();
+            auto pthread = std::make_unique<VDFComputerThread>(std::move(infusion), std::move(x), iters,
+                    [](std::optional<VDFComputerThread::Result> result){});
         }
     });
     PLOG_INFO << "starting the client";
