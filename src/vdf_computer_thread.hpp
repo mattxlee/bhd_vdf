@@ -18,7 +18,7 @@ public:
     using VDFResultHandler = std::function<void(std::optional<Result>)>;
 
     VDFComputerThread(Bytes infusion, Bytes x, uint64_t iters, VDFResultHandler handler)
-        : infusion_(std::move(infusion)), x_(std::move(x)), iters_(iters) {}
+        : infusion_(std::move(infusion)), x_(std::move(x)), iters_(iters), result_handler_(std::move(handler)) {}
 
     void run() {
         assert(pthread_ == nullptr);
