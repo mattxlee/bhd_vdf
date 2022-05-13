@@ -1,4 +1,5 @@
 #include <thread>
+#include <optional>
 
 #include <gtest/gtest.h>
 #include <plog/Log.h>
@@ -99,16 +100,33 @@ TEST_F(ServerTest, PingPong) {
 }
 
 TEST_F(ServerTest, VdfCalculation) {
-    srv->set_session_message_handler([](net::Message const* pmsg, uint8_t msg_id, net::SessionPtr psession) {
-        PLOG_INFO << "received new message from server, msg_id=" << msg_id;
+    vdf::Computer::InitializeComputer();
+    std::vector<VDFComputerThreadPtr> threads;
+    srv->set_session_message_handler([&threads](net::Message const* pmsg, uint8_t msg_id, net::SessionPtr psession) {
+        PLOG_INFO << "received new message from client, msg_id=" << net::msg_id_to_string(msg_id);
         if (msg_id == net::MSGID_REQUESTVDF) {
             // start new Vdf computer
             auto pmsg_request_vdf = static_cast<RequestVDF const*>(pmsg);
             Bytes infusion = to_bytes(pmsg_request_vdf->infusion());
             Bytes x = to_bytes(pmsg_request_vdf->x());
             uint64_t iters = pmsg_request_vdf->iters();
-            auto pthread = std::make_unique<VDFComputerThread>(std::move(infusion), std::move(x), iters,
-                    [](std::optional<VDFComputerThread::Result> result){});
+            auto pthread = std::make_shared<VDFComputerThread>(
+                std::move(infusion), std::move(x), iters, [psession](std::optional<VDFComputerThread::Result> result) {
+                    if (!result) {
+                        PLOG_ERROR << "VDF computer is finished without valid result";
+                        return;
+                    }
+                    auto pmsg_vdf_result = std::make_unique<VDFResult>();
+                    pmsg_vdf_result->set_infusion(to_string(result->infusion));
+                    pmsg_vdf_result->set_x(to_string(result->x));
+                    pmsg_vdf_result->set_iters(result->iters);
+                    pmsg_vdf_result->set_y(to_string(result->y));
+                    pmsg_vdf_result->set_proof(to_string(result->proof));
+                    pmsg_vdf_result->set_duration(result->duration);
+                    psession->write_message(pmsg_vdf_result.get(), net::MSGID_VDFRESULT);
+                });
+            pthread->run();
+            threads.push_back(pthread);
         }
     });
     PLOG_INFO << "starting the client";
