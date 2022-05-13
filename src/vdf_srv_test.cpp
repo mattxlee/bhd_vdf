@@ -116,8 +116,7 @@ TEST_F(ServerTest, VdfCalculation) {
     net::Client client(
         ioc, {std::make_shared<net::MsgFactory_RequestVDFReply>(), std::make_shared<net::MsgFactory_VDFResult>()});
     client.set_message_handler([&client](net::Message const* pmsg, uint8_t msg_id) {
-        EXPECT_EQ(msg_id, net::MSGID_PONG);
-        if (msg_id == net::MSGID_PONG) {
+        if (msg_id == net::MSGID_VDFRESULT) {
             auto pmsg_result = static_cast<VDFResult const*>(pmsg);
             Bytes infusion = to_bytes(pmsg_result->infusion());
             auto D = vdf::utils::CreateDiscriminant(infusion);
