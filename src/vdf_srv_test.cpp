@@ -138,7 +138,7 @@ TEST_F(ServerTest, VdfCalculation) {
         EXPECT_TRUE(succ);
         // send message to request new Vdf computing
         auto req = std::make_unique<RequestVDF>();
-        Bytes infusion(32, '\0'), x(32, '\0');
+        Bytes infusion(32, '\0'), x;
         req->set_infusion(to_string(infusion));
         req->set_x(to_string(x));
         req->set_iters(10000);
