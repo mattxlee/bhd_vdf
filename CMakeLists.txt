@@ -34,11 +34,15 @@ set(CXX_FLAGS "-pthread ${NOPIE}${LTOFLAG} -fvisibility=hidden")
 set(CMAKE_CXX_FLAGS_DEBUG "${CXX_FLAGS} -g2 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS} -O3")
 
+option(BUILD_SRV "Build bhd_srv" OFF)
+option(BUILD_TEST "Build test" OFF)
+
 include(FetchContent)
 FetchContent_Declare(
     chiavdf
     GIT_REPOSITORY https://github.com/Chia-Network/chiavdf
     GIT_TAG 1.0.6
+    PATCH_COMMAND git apply --reject ${CMAKE_CURRENT_SOURCE_DIR}/chiavdf.patch
     )
 FetchContent_Declare(
     plog
@@ -59,9 +63,7 @@ set(CMAKE_MODULE_PATH
 
 find_package(GMP REQUIRED)
 find_package(GMPXX REQUIRED)
-find_package(Boost 1.6 REQUIRED COMPONENTS program_options)
 find_package(Threads)
-find_package(Protobuf REQUIRED)
 
 message(STATUS ${plog_SOURCE_DIR})
 
@@ -90,8 +92,6 @@ add_custom_command(OUTPUT ./asm_compiled.s COMMAND ./compile_asm DEPENDS compile
 add_custom_command(OUTPUT ./avx2_asm_compiled.s COMMAND ./compile_asm avx2 DEPENDS compile_asm)
 add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./compile_asm avx512 DEPENDS compile_asm)
 
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ./src/vdf_msgs.proto)
-
 set(VDF_LIB_SRCS
     src/vdf_computer.cpp
     ${CHIAVDF_SRC}
@@ -105,60 +105,69 @@ target_link_libraries(bhd_vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${
 install(FILES src/vdf_computer.h DESTINATION include)
 install(TARGETS bhd_vdf DESTINATION lib)
 
-set(VDF_SRV_SRCS
-    src/vdf_server.cpp
-    src/vdf_computer.cpp
-    src/vdf_net.cpp
-    src/vdf_utils.cpp
-    ${CHIAVDF_SRC}
-    ./asm_compiled.s
-    ./avx2_asm_compiled.s
-    ./avx512_asm_compiled.s
-    )
-add_executable(vdf_srv
-    ${VDF_SRV_SRCS}
-    ${PROTO_SRCS}
-    )
-target_link_libraries(vdf_srv PRIVATE
-    ${COMPILE_ASM_LDFLAGS}
-    ${GMP_LIBRARIES}
-    ${GMPXX_LIBRARIES}
-    ${CMAKE_THREAD_LIBS_INIT}
-    Boost::program_options
-    protobuf::libprotobuf
-    )
+if (BUILD_SRV)
+    find_package(Protobuf REQUIRED)
+    find_package(Boost REQUIRED COMPONENTS program_options)
+    protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ./src/vdf_msgs.proto)
+    set(VDF_SRV_SRCS
+        src/vdf_server.cpp
+        src/vdf_computer.cpp
+        src/vdf_net.cpp
+        src/vdf_utils.cpp
+        ${CHIAVDF_SRC}
+        ./asm_compiled.s
+        ./avx2_asm_compiled.s
+        ./avx512_asm_compiled.s
+        )
+    add_executable(vdf_srv
+        ${VDF_SRV_SRCS}
+        ${PROTO_SRCS}
+        )
+    target_link_libraries(vdf_srv PRIVATE
+        ${COMPILE_ASM_LDFLAGS}
+        ${GMP_LIBRARIES}
+        ${GMPXX_LIBRARIES}
+        ${CMAKE_THREAD_LIBS_INIT}
+        Boost::program_options
+        protobuf::libprotobuf
+        )
+endif(BUILD_SRV)
 
-find_package(GTest REQUIRED)
-enable_testing()
-# VDF test target
-set(VDF_TEST_SRCS
-    src/vdf_test.cpp
-    src/vdf_computer.cpp
-    ${CHIAVDF_SRC}
-    ./asm_compiled.s
-    ./avx2_asm_compiled.s
-    ./avx512_asm_compiled.s
-    )
-add_executable(vdf_test ${VDF_TEST_SRCS})
-target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS}
-    GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
-add_test(vdf_test COMMAND vdf_test)
-# VDF server test target
-set(VDF_SRV_TEST_SRCS
-    src/vdf_net.cpp
-    src/vdf_computer.cpp
-    src/vdf_utils.cpp
-    src/vdf_srv_test.cpp
-    ${CHIAVDF_SRC}
-    ${PROTO_SRCS}
-    ./asm_compiled.s
-    ./avx2_asm_compiled.s
-    ./avx512_asm_compiled.s
-    )
-add_executable(vdf_srv_test ${VDF_SRV_TEST_SRCS})
-target_link_libraries(vdf_srv_test PRIVATE
-    ${COMPILE_ASM_LDFLAGS}
-    GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
-    protobuf::libprotobuf
-    )
-add_test(vdf_srv_test COMMAND vdf_srv_test)
+if (BUILD_TEST)
+    find_package(Protobuf REQUIRED)
+    find_package(GTest REQUIRED)
+    protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ./src/vdf_msgs.proto)
+    enable_testing()
+    # VDF test target
+    set(VDF_TEST_SRCS
+        src/vdf_test.cpp
+        src/vdf_computer.cpp
+        ${CHIAVDF_SRC}
+        ./asm_compiled.s
+        ./avx2_asm_compiled.s
+        ./avx512_asm_compiled.s
+        )
+    add_executable(vdf_test ${VDF_TEST_SRCS})
+    target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS}
+        GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
+    add_test(vdf_test COMMAND vdf_test)
+    # VDF server test target
+    set(VDF_SRV_TEST_SRCS
+        src/vdf_net.cpp
+        src/vdf_computer.cpp
+        src/vdf_utils.cpp
+        src/vdf_srv_test.cpp
+        ${CHIAVDF_SRC}
+        ${PROTO_SRCS}
+        ./asm_compiled.s
+        ./avx2_asm_compiled.s
+        ./avx512_asm_compiled.s
+        )
+    add_executable(vdf_srv_test ${VDF_SRV_TEST_SRCS})
+    target_link_libraries(vdf_srv_test PRIVATE
+        ${COMPILE_ASM_LDFLAGS}
+        GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
+        protobuf::libprotobuf
+        )
+    add_test(vdf_srv_test COMMAND vdf_srv_test)
+endif(BUILD_TEST)

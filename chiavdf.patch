@@ -1,0 +1,20 @@
+diff --git a/src/vdf.h b/src/vdf.h
+index dec959d..dda778f 100644
+--- a/src/vdf.h
++++ b/src/vdf.h
+@@ -50,15 +50,12 @@
+ #include "util.h"
+ #include "callback.h"
+ #include "fast_storage.h"
+-#include <boost/asio.hpp>
+ 
+ #include <atomic>
+ #include <optional>
+ 
+ bool warn_on_corruption_in_production=false;
+ 
+-using boost::asio::ip::tcp;
+-
+ struct akashnil_form {
+     // y = ax^2 + bxy + y^2
+     mpz_t a;
