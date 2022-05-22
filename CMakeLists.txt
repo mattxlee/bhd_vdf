@@ -102,7 +102,12 @@ set(VDF_LIB_SRCS
 add_library(bhd_vdf ${VDF_LIB_SRCS})
 target_link_libraries(bhd_vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
-install(FILES src/vdf_computer.h DESTINATION include)
+set(INSTALL_INCLUDE_FILES
+    src/vdf_types.h
+    src/vdf_computer.h
+    )
+
+install(FILES ${INSTALL_INCLUDE_FILES} DESTINATION include)
 install(TARGETS bhd_vdf DESTINATION lib)
 
 if (BUILD_SRV)
