@@ -42,7 +42,7 @@ FetchContent_Declare(
     chiavdf
     GIT_REPOSITORY https://github.com/Chia-Network/chiavdf
     GIT_TAG 1.0.6
-    PATCH_COMMAND git apply --reject ${CMAKE_CURRENT_SOURCE_DIR}/chiavdf.patch
+    PATCH_COMMAND git apply --reject ${CMAKE_CURRENT_SOURCE_DIR}/chiavdf.patch || true
     )
 FetchContent_Declare(
     plog
