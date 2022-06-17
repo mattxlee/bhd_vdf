@@ -61,8 +61,24 @@ set(CMAKE_MODULE_PATH
     ${CMAKE_MODULE_PATH}
     )
 
-find_package(GMP REQUIRED)
-find_package(GMPXX REQUIRED)
+set(GMP_PREFIX_DIR "${CMAKE_CURRENT_BINARY_DIR}/gmp")
+set(GMP_SOURCE_DIR "${GMP_PREFIX_DIR}/src")
+
+set(GMP_INCLUDE_DIR ${GMP_PREFIX_DIR}/include)
+set(GMPXX_INCLUDE_DIR ${GMP_PREFIX_DIR}/include)
+
+include(ExternalProject)
+ExternalProject_Add(GMP
+    URL https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz
+    URL_HASH SHA256=2c7f4f0d370801b2849c48c9ef3f59553b5f1d3791d070cffb04599f9fc67b41
+    SOURCE_DIR "${GMP_SOURCE_DIR}"
+    CONFIGURE_COMMAND ./configure --enable-cxx --enable-static --enable-fat --prefix=${GMP_PREFIX_DIR} --host=${TOOLCHAIN_PREFIX} CC_FOR_BUILD=gcc
+    TEST_COMMAND ""
+    BUILD_IN_SOURCE 1
+    )
+set(GMP_LIBRARIES ${GMP_PREFIX_DIR}/lib/libgmp.a)
+set(GMPXX_LIBRARIES ${GMP_PREFIX_DIR}/lib/libgmpxx.a)
+
 find_package(Threads)
 
 message(STATUS ${plog_SOURCE_DIR})
@@ -100,6 +116,7 @@ set(VDF_LIB_SRCS
     ./avx512_asm_compiled.s
     )
 add_library(bhd_vdf ${VDF_LIB_SRCS})
+add_dependencies(bhd_vdf GMP)
 target_link_libraries(bhd_vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
 set(INSTALL_INCLUDE_FILES
@@ -128,6 +145,7 @@ if (BUILD_SRV)
         ${VDF_SRV_SRCS}
         ${PROTO_SRCS}
         )
+    add_dependencies(vdf_srv GMP)
     target_link_libraries(vdf_srv PRIVATE
         ${COMPILE_ASM_LDFLAGS}
         ${GMP_LIBRARIES}
@@ -153,6 +171,7 @@ if (BUILD_TEST)
         ./avx512_asm_compiled.s
         )
     add_executable(vdf_test ${VDF_TEST_SRCS})
+    add_dependencies(vdf_test GMP)
     target_link_libraries(vdf_test PRIVATE ${COMPILE_ASM_LDFLAGS}
         GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
     add_test(vdf_test COMMAND vdf_test)
@@ -169,6 +188,7 @@ if (BUILD_TEST)
         ./avx512_asm_compiled.s
         )
     add_executable(vdf_srv_test ${VDF_SRV_TEST_SRCS})
+    add_dependencies(vdf_srv_test GMP)
     target_link_libraries(vdf_srv_test PRIVATE
         ${COMPILE_ASM_LDFLAGS}
         GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
