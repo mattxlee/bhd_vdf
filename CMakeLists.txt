@@ -34,6 +34,7 @@ set(CXX_FLAGS "-pthread ${NOPIE}${LTOFLAG} -fvisibility=hidden")
 set(CMAKE_CXX_FLAGS_DEBUG "${CXX_FLAGS} -g2 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS} -O3")
 
+option(BUILD_COMPILE_ASM "Build compile_asm and use it to generate .s files" OFF)
 option(BUILD_SRV "Build bhd_srv" OFF)
 option(BUILD_TEST "Build test" OFF)
 
@@ -100,20 +101,30 @@ set(CHIAVDF_SRC
     ${chiavdf_SOURCE_DIR}/src/refcode/lzcnt.c
     )
 
-add_executable(compile_asm ${COMPILE_ASM_SRC})
-target_compile_definitions(compile_asm PRIVATE ${COMPILE_ASM_DEFS})
-target_link_libraries(compile_asm PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
-
-add_custom_command(OUTPUT ./asm_compiled.s COMMAND ./compile_asm DEPENDS compile_asm)
-add_custom_command(OUTPUT ./avx2_asm_compiled.s COMMAND ./compile_asm avx2 DEPENDS compile_asm)
-add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./compile_asm avx512 DEPENDS compile_asm)
+if (BUILD_COMPILE_ASM)
+    add_executable(compile_asm ${COMPILE_ASM_SRC})
+    target_compile_definitions(compile_asm PRIVATE ${COMPILE_ASM_DEFS})
+    target_link_libraries(compile_asm PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
+    add_custom_command(OUTPUT ./asm_compiled.s COMMAND ./compile_asm DEPENDS compile_asm)
+    add_custom_command(OUTPUT ./avx2_asm_compiled.s COMMAND ./compile_asm avx2 DEPENDS compile_asm)
+    add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./compile_asm avx512 DEPENDS compile_asm)
+    set(ASM_FILES
+        ./asm_compiled.s
+        ./avx2_asm_compiled.s
+        ./avx512_asm_compiled.s
+        )
+else()
+    set(ASM_FILES
+        src/asm_s/asm_compiled.s
+        src/asm_s/avx2_asm_compiled.s
+        src/asm_s/avx512_asm_compiled.s
+        )
+endif()
 
 set(VDF_LIB_SRCS
     src/vdf_computer.cpp
     ${CHIAVDF_SRC}
-    ./asm_compiled.s
-    ./avx2_asm_compiled.s
-    ./avx512_asm_compiled.s
+    ${ASM_FILES}
     )
 add_library(bhd_vdf ${VDF_LIB_SRCS})
 add_dependencies(bhd_vdf GMP)
@@ -137,9 +148,7 @@ if (BUILD_SRV)
         src/vdf_net.cpp
         src/vdf_utils.cpp
         ${CHIAVDF_SRC}
-        ./asm_compiled.s
-        ./avx2_asm_compiled.s
-        ./avx512_asm_compiled.s
+        ${ASM_FILES}
         )
     add_executable(vdf_srv
         ${VDF_SRV_SRCS}
@@ -166,9 +175,7 @@ if (BUILD_TEST)
         src/vdf_test.cpp
         src/vdf_computer.cpp
         ${CHIAVDF_SRC}
-        ./asm_compiled.s
-        ./avx2_asm_compiled.s
-        ./avx512_asm_compiled.s
+        ${ASM_FILES}
         )
     add_executable(vdf_test ${VDF_TEST_SRCS})
     add_dependencies(vdf_test GMP)
@@ -183,9 +190,7 @@ if (BUILD_TEST)
         src/vdf_srv_test.cpp
         ${CHIAVDF_SRC}
         ${PROTO_SRCS}
-        ./asm_compiled.s
-        ./avx2_asm_compiled.s
-        ./avx512_asm_compiled.s
+        ${ASM_FILES}
         )
     add_executable(vdf_srv_test ${VDF_SRV_TEST_SRCS})
     add_dependencies(vdf_srv_test GMP)
