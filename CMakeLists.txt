@@ -35,6 +35,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CXX_FLAGS} -g2 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS} -O3")
 
 option(BUILD_COMPILE_ASM "Build compile_asm and use it to generate .s files" OFF)
+option(GENERATE_ASM_FILES "Generate .s files by using compile_asm, affect only when BUILD_COMPILE_ASM is ON" OFF)
 option(BUILD_SRV "Build bhd_srv" OFF)
 option(BUILD_TEST "Build test" OFF)
 
@@ -105,14 +106,22 @@ if (BUILD_COMPILE_ASM)
     add_executable(compile_asm ${COMPILE_ASM_SRC})
     target_compile_definitions(compile_asm PRIVATE ${COMPILE_ASM_DEFS})
     target_link_libraries(compile_asm PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
-    add_custom_command(OUTPUT ./asm_compiled.s COMMAND ./compile_asm DEPENDS compile_asm)
-    add_custom_command(OUTPUT ./avx2_asm_compiled.s COMMAND ./compile_asm avx2 DEPENDS compile_asm)
-    add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./compile_asm avx512 DEPENDS compile_asm)
-    set(ASM_FILES
-        ./asm_compiled.s
-        ./avx2_asm_compiled.s
-        ./avx512_asm_compiled.s
-        )
+    if (GENERATE_ASM_FILES)
+        add_custom_command(OUTPUT ./asm_compiled.s COMMAND ./compile_asm DEPENDS compile_asm)
+        add_custom_command(OUTPUT ./avx2_asm_compiled.s COMMAND ./compile_asm avx2 DEPENDS compile_asm)
+        add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./compile_asm avx512 DEPENDS compile_asm)
+        set(ASM_FILES
+            ./asm_compiled.s
+            ./avx2_asm_compiled.s
+            ./avx512_asm_compiled.s
+            )
+    else()
+        set(ASM_FILES
+            src/asm_s/asm_compiled.s
+            src/asm_s/avx2_asm_compiled.s
+            src/asm_s/avx512_asm_compiled.s
+            )
+    endif()
 else()
     set(ASM_FILES
         src/asm_s/asm_compiled.s
