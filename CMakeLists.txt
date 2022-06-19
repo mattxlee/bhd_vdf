@@ -107,9 +107,14 @@ if (BUILD_COMPILE_ASM)
     target_compile_definitions(compile_asm PRIVATE ${COMPILE_ASM_DEFS})
     target_link_libraries(compile_asm PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
     if (GENERATE_ASM_FILES)
-        add_custom_command(OUTPUT ./asm_compiled.s COMMAND ./compile_asm DEPENDS compile_asm)
-        add_custom_command(OUTPUT ./avx2_asm_compiled.s COMMAND ./compile_asm avx2 DEPENDS compile_asm)
-        add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./compile_asm avx512 DEPENDS compile_asm)
+        if (WIN32)
+            set(COMPILE_ASM_EXE "compile_asm.exe")
+        else()
+            set(COMPILE_ASM_EXE "compile_asm")
+        endif()
+        add_custom_command(OUTPUT ./asm_compiled.s COMMAND ./${COMPILE_ASM_EXE} DEPENDS compile_asm)
+        add_custom_command(OUTPUT ./avx2_asm_compiled.s COMMAND ./${COMPILE_ASM_EXE} avx2 DEPENDS compile_asm)
+        add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./${COMPILE_ASM_EXE} avx512 DEPENDS compile_asm)
         set(ASM_FILES
             ./asm_compiled.s
             ./avx2_asm_compiled.s
