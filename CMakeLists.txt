@@ -147,6 +147,7 @@ target_link_libraries(bhd_vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${
 set(INSTALL_INCLUDE_FILES
     src/vdf_types.h
     src/vdf_computer.h
+    ${chiavdf_SOURCE_DIR}/src/verifier.h
     )
 
 install(FILES ${INSTALL_INCLUDE_FILES} DESTINATION include)
