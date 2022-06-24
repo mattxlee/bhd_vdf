@@ -74,7 +74,7 @@ ExternalProject_Add(GMP
     URL https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz
     URL_HASH SHA256=2c7f4f0d370801b2849c48c9ef3f59553b5f1d3791d070cffb04599f9fc67b41
     SOURCE_DIR "${GMP_SOURCE_DIR}"
-    CONFIGURE_COMMAND ./configure --enable-cxx --enable-static --enable-fat --prefix=${GMP_PREFIX_DIR} --host=${TOOLCHAIN_PREFIX} CC_FOR_BUILD=gcc
+    CONFIGURE_COMMAND ./configure --enable-cxx --enable-static --enable-fat --prefix=${GMP_PREFIX_DIR} --build=x86_64-linux-gnu --host=${TOOLCHAIN_PREFIX} CC_FOR_BUILD=gcc
     TEST_COMMAND ""
     BUILD_IN_SOURCE 1
     )
