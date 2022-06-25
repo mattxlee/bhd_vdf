@@ -17,9 +17,9 @@ add_compile_definitions(
     )
 
 if (${CMAKE_CXX_COMPILER_ID} MATCHES ^.*Clang.*$)
-    set(NOPIE "-fno-PIE")
+    set(NOPIE "-fPIC")
 else()
-    set(NOPIE "-no-pie")
+    set(NOPIE "-fpic")
 endif()
 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CONF)
