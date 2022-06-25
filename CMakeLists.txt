@@ -140,7 +140,7 @@ set(VDF_LIB_SRCS
     ${CHIAVDF_SRC}
     ${ASM_FILES}
     )
-add_library(bhd_vdf ${VDF_LIB_SRCS})
+add_library(bhd_vdf STATIC ${VDF_LIB_SRCS})
 add_dependencies(bhd_vdf GMP)
 target_link_libraries(bhd_vdf PRIVATE ${COMPILE_ASM_LDFLAGS} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
