@@ -19,7 +19,7 @@ add_compile_definitions(
 if (${CMAKE_CXX_COMPILER_ID} MATCHES ^.*Clang.*$)
     set(NOPIE "-fPIE")
 else()
-    set(NOPIE "-fpie")
+    set(NOPIE "-pie")
 endif()
 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CONF)
