@@ -24,7 +24,7 @@ if (${CMAKE_CXX_COMPILER_ID} MATCHES ^.*Clang.*$)
     set(PIEFLAG "-fno-PIE")
     set(PIELINKOPTS "-no-pie")
 else()
-    set(PIEFLAG "-fno-pie")
+    set(PIEFLAG "-no-pie")
     set(PIELINKOPTS "-no-pie")
 endif()
 
