@@ -38,6 +38,7 @@ else()
     add_compile_definitions(DEBUG=1)
     set(OPTIMIZEFLAGS "-g2 -O0")
 endif()
+set(VISIBILITY_HIDDEN_FLAG "-fvisibility=hidden")
 
 include(FetchContent)
 FetchContent_Declare(
@@ -46,12 +47,7 @@ FetchContent_Declare(
     GIT_TAG 1.0.6
     PATCH_COMMAND git apply --reject ${CMAKE_CURRENT_SOURCE_DIR}/chiavdf.patch || true
     )
-FetchContent_Declare(
-    plog
-    GIT_REPOSITORY https://github.com/sergiusthebest/plog
-    GIT_TAG 1.1.6
-    )
-FetchContent_MakeAvailable(chiavdf plog)
+FetchContent_MakeAvailable(chiavdf)
 
 # Setup the way to retrieve GMP source
 set(GMP_PREFIX_DIR ${CMAKE_CURRENT_BINARY_DIR}/gmp)
@@ -80,7 +76,7 @@ if (BUILD_COMPILE_ASM)
         ${chiavdf_SOURCE_DIR}/src/compile_asm.cpp
         )
     add_executable(compile_asm ${COMPILE_ASM_SRC})
-    target_compile_options(compile_asm PRIVATE ${PIEFLAG})
+    target_compile_options(compile_asm PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG})
     target_link_options(compile_asm PRIVATE ${PIELINKOPTS} ${LTOFLAG})
     target_link_libraries(compile_asm PRIVATE ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
     if (GENERATE_ASM_FILES)
@@ -117,7 +113,7 @@ set(VDF_LIB_SRCS
     )
 add_library(bhd_vdf STATIC ${VDF_LIB_SRCS})
 add_dependencies(bhd_vdf GMP)
-target_compile_options(bhd_vdf PRIVATE ${PIEFLAG})
+target_compile_options(bhd_vdf PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG})
 target_include_directories(bhd_vdf PRIVATE
     ${GMP_INCLUDE_DIR}
     ${GMPXX_INCLUDE_DIR}
@@ -157,7 +153,7 @@ if (BUILD_TEST)
         ${GMPXX_INCLUDE_DIR}
         ${chiavdf_SOURCE_DIR}/src
         )
-    target_compile_options(vdf_test PRIVATE ${PIEFLAG})
+    target_compile_options(vdf_test PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG})
     target_link_options(vdf_test PRIVATE ${PIELINKOPTS} ${LTOFLAG})
     target_link_libraries(vdf_test PRIVATE GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
     add_test(vdf_test COMMAND vdf_test)
