@@ -5,8 +5,8 @@
 #if defined(USE_VDF_COMPUTER)
 #include "vdf.h"
 
-int gcd_base_bits=50;
-int gcd_128_max_iter=3;
+int gcd_base_bits = 50;
+int gcd_128_max_iter = 3;
 
 #endif
 
@@ -49,9 +49,13 @@ Bytes ConnectBytes(Bytes const& lhs, Bytes const& rhs) {
 
 Bytes SerializeProof(types::Proof const& proof) { return ConnectBytes(proof.y, proof.proof); }
 
-bool VerifyProof(types::Integer const& D, Bytes const& proof, uint64_t iters, uint8_t witness_type, Bytes const& x) {
+bool VerifyProof(
+    types::Integer const& D_int, Bytes const& proof_data, uint64_t iters, uint8_t depth, Bytes const& x_data) {
+    static const uint8_t DEFAULT_ELEMENT[1] = {0x08};
+    integer D = D_int.Get_integer();
     return CheckProofOfTimeNWesolowski(
-        D.Get_integer(), x.data(), proof.data(), proof.size(), iters, DEFAULT_DISC_SIZE, witness_type);
+        D, x_data.empty() ? DEFAULT_ELEMENT : x_data.data(), proof_data.data(), proof_data.size(), iters,
+        DEFAULT_DISC_SIZE, depth);
 }
 
 uint8_t ValueFromHexChar(char ch) {

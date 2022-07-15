@@ -47,8 +47,7 @@ Bytes ConnectBytes(Bytes const& lhs, Bytes const& rhs);
 
 Bytes SerializeProof(types::Proof const& proof);
 
-bool VerifyProof(
-    types::Integer const& D, Bytes const& proof, uint64_t iters, uint8_t witness_type = 0, Bytes const& x = {0x08});
+bool VerifyProof(types::Integer const& D, Bytes const& proof, uint64_t iters, uint8_t depth = 0, Bytes const& x = {});
 
 Bytes BytesFromStr(std::string const& str);
 
