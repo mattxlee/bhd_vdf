@@ -26,7 +26,7 @@ public:
 
     explicit Integer(std::string const& str);
 
-    integer const& Get_integer() const;
+    integer Get_integer() const;
 
     std::string FormatString() const;
 };
@@ -58,6 +58,8 @@ Bytes GetDefaultForm();
 
 int FORM_SIZE();
 
+#if defined(USE_VDF_COMPUTER)
+
 class Computer {
     // Members to initialize the object
     Bytes initial_form_;
@@ -87,6 +89,8 @@ public:
 
     types::Proof const& GetProof() const { return proof_; }
 };
+
+#endif
 
 }  // namespace vdf
 

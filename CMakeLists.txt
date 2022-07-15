@@ -3,8 +3,12 @@ cmake_minimum_required(VERSION 3.0)
 project(bhd_vdf)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_EXPORT_COMPILE_COMMANDS on)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
 
 enable_language(ASM)
 
@@ -29,14 +33,14 @@ else()
 endif()
 
 # LTO flag will only apply to release version
-string(TOLOWER "${CMAKE_BUILD_TYPE}" CONF)
-if (NOT CONF MATCHES "debug")
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    add_compile_definitions(DEBUG=1)
+    set(OPTIMIZEFLAGS "-O0")
+else()
+    add_compile_definitions(NDEBUG=1)
     set(LTOFLAG "-flto")
     message(STATUS "LTO is on")
-    set(OPTIMIZEFLAGS "-O3")
-else()
-    add_compile_definitions(DEBUG=1)
-    set(OPTIMIZEFLAGS "-g2 -O0")
+    set(OPTIMIZEFLAGS "-O2")
 endif()
 set(VISIBILITY_HIDDEN_FLAG "-fvisibility=hidden")
 
@@ -45,7 +49,6 @@ FetchContent_Declare(
     chiavdf
     GIT_REPOSITORY https://github.com/Chia-Network/chiavdf
     GIT_TAG 1.0.6
-    PATCH_COMMAND git apply --reject ${CMAKE_CURRENT_SOURCE_DIR}/chiavdf.patch || true
     )
 FetchContent_MakeAvailable(chiavdf)
 
@@ -57,9 +60,10 @@ ExternalProject_Add(GMP
     URL https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz
     URL_HASH SHA256=2c7f4f0d370801b2849c48c9ef3f59553b5f1d3791d070cffb04599f9fc67b41
     SOURCE_DIR "${GMP_SOURCE_DIR}"
-    CONFIGURE_COMMAND ./configure --enable-cxx --enable-static --enable-fat --prefix=${GMP_PREFIX_DIR} --build=x86_64-linux-gnu --host=${TOOLCHAIN_PREFIX} CC_FOR_BUILD=gcc
+    CONFIGURE_COMMAND CPPFLAGS=-D__USE_MINGW_ANSI_STDIO=1 ./configure --enable-cxx --enable-fat --enable-static --prefix=${GMP_PREFIX_DIR} --host=${TOOLCHAIN_PREFIX} CC_FOR_BUILD=gcc
     TEST_COMMAND ""
     BUILD_IN_SOURCE 1
+    PATCH_COMMAND git apply --reject ${CMAKE_CURRENT_SOURCE_DIR}/chiavdf-remove_boost.patch || true
     )
 set(GMP_INCLUDE_DIR ${GMP_PREFIX_DIR}/include)
 set(GMPXX_INCLUDE_DIR ${GMP_PREFIX_DIR}/include)
@@ -68,60 +72,53 @@ set(GMPXX_LIBRARIES ${GMP_PREFIX_DIR}/lib/libgmpxx.a)
 
 find_package(Threads)
 
-message(STATUS ${plog_SOURCE_DIR})
-
 if (BUILD_COMPILE_ASM)
     set(COMPILE_ASM_SRC
         ${chiavdf_SOURCE_DIR}/src/xgcd_partial.c
         ${chiavdf_SOURCE_DIR}/src/compile_asm.cpp
+        ${UINT128_SRCS}
         )
     add_executable(compile_asm ${COMPILE_ASM_SRC})
     add_dependencies(compile_asm GMP)
-    target_compile_options(compile_asm PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG})
+    target_compile_options(compile_asm PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG} -g)
     target_link_options(compile_asm PRIVATE ${PIELINKOPTS} ${LTOFLAG})
     target_link_libraries(compile_asm PRIVATE ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
     target_include_directories(compile_asm PRIVATE ${GMP_INCLUDE_DIR} ${GMPXX_INCLUDE_DIR})
     if (GENERATE_ASM_FILES)
-        if (WIN32)
-            set(COMPILE_ASM_EXE "compile_asm.exe")
-        else()
-            set(COMPILE_ASM_EXE "compile_asm")
-        endif()
+        set(COMPILE_ASM_EXE "compile_asm")
         add_custom_command(OUTPUT ./asm_compiled.s COMMAND ./${COMPILE_ASM_EXE} DEPENDS compile_asm)
         add_custom_command(OUTPUT ./avx2_asm_compiled.s COMMAND ./${COMPILE_ASM_EXE} avx2 DEPENDS compile_asm)
         add_custom_command(OUTPUT ./avx512_asm_compiled.s COMMAND ./${COMPILE_ASM_EXE} avx512 DEPENDS compile_asm)
-        set(ASM_FILES
-            ./asm_compiled.s
-            ./avx2_asm_compiled.s
-            ./avx512_asm_compiled.s
-            )
     endif()
 endif()
-if (NOT GENERATE_ASM_FILES)
+
+if (NOT WIN32)
+    add_definitions(-DUSE_VDF_COMPUTER=1)
     set(ASM_FILES
-        src/asm_s/asm_compiled.s
-        src/asm_s/avx2_asm_compiled.s
-        src/asm_s/avx512_asm_compiled.s
+        src/unix/asm_compiled.s
+        src/unix/avx2_asm_compiled.s
+        src/unix/avx512_asm_compiled.s
         )
 endif()
-
 set(CHIAVDF_SRC
     ${chiavdf_SOURCE_DIR}/src/refcode/lzcnt.c
+    ${ASM_FILES}
     )
 set(VDF_LIB_SRCS
     src/vdf_computer.cpp
     ${CHIAVDF_SRC}
-    ${ASM_FILES}
     )
 add_library(bhd_vdf STATIC ${VDF_LIB_SRCS})
 add_dependencies(bhd_vdf GMP)
-target_compile_options(bhd_vdf PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG})
+if (NOT WIN32)
+    target_compile_options(bhd_vdf PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG} -g)
+    target_link_options(bhd_vdf PRIVATE ${PIELINKOPTS} ${LTOFLAG})
+endif()
 target_include_directories(bhd_vdf PRIVATE
     ${GMP_INCLUDE_DIR}
     ${GMPXX_INCLUDE_DIR}
     ${chiavdf_SOURCE_DIR}/src
     )
-target_link_options(bhd_vdf PRIVATE ${PIELINKOPTS} ${LTOFLAG})
 target_link_libraries(bhd_vdf PRIVATE ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 
 set(INSTALL_INCLUDE_FILES
@@ -146,17 +143,18 @@ if (BUILD_TEST)
         src/vdf_test.cpp
         src/vdf_computer.cpp
         ${CHIAVDF_SRC}
-        ${ASM_FILES}
         )
     add_executable(vdf_test ${VDF_TEST_SRCS})
     add_dependencies(vdf_test GMP)
+    if (NOT WIN32)
+        target_compile_options(vdf_test PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG} -g)
+        target_link_options(vdf_test PRIVATE ${PIELINKOPTS} ${LTOFLAG})
+    endif()
     target_include_directories(vdf_test PRIVATE
         ${GMP_INCLUDE_DIR}
         ${GMPXX_INCLUDE_DIR}
         ${chiavdf_SOURCE_DIR}/src
         )
-    target_compile_options(vdf_test PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG})
-    target_link_options(vdf_test PRIVATE ${PIELINKOPTS} ${LTOFLAG})
     target_link_libraries(vdf_test PRIVATE GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
     add_test(vdf_test COMMAND vdf_test)
 endif(BUILD_TEST)

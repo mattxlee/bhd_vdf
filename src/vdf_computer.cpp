@@ -2,13 +2,17 @@
 
 #include <sstream>
 
+#if defined(USE_VDF_COMPUTER)
 #include "vdf.h"
+
+int gcd_base_bits=50;
+int gcd_128_max_iter=3;
+
+#endif
+
 #include "verifier.h"
 
 #include "create_discriminant.h"
-
-int gcd_base_bits = 50;
-int gcd_128_max_iter = 3;
 
 std::ostream& operator<<(std::ostream& os, __mpz_struct const* z) { return os; }
 
@@ -20,7 +24,7 @@ Integer::Integer(integer const& val) { val_.reset(new integer(val)); }
 
 Integer::Integer(std::string const& str) { val_.reset(new integer(str)); }
 
-integer const& Integer::Get_integer() const { return *val_; }
+integer Integer::Get_integer() const { return *val_; }
 
 std::string Integer::FormatString() const {
     std::stringstream ss;
@@ -80,6 +84,8 @@ Bytes GetDefaultForm() {
 }
 
 }  // namespace utils
+
+#if defined(USE_VDF_COMPUTER)
 
 void CreateAndWriteProofOneWeso(
     uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso, std::atomic<bool>& stopped, types::Proof& out) {
@@ -144,5 +150,7 @@ void Computer::Run(uint64_t iter, std::atomic_bool& stop) {
 void Computer::SetStop(bool stopped) { stopped = stopped; }
 
 void Computer::Join() { m_.lock(); }
+
+#endif
 
 }  // namespace vdf
