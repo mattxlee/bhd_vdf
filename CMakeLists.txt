@@ -49,6 +49,7 @@ FetchContent_Declare(
     chiavdf
     GIT_REPOSITORY https://github.com/Chia-Network/chiavdf
     GIT_TAG 1.0.6
+    PATCH_COMMAND git apply --reject ${CMAKE_CURRENT_SOURCE_DIR}/chiavdf-remove_boost.patch || true
     )
 FetchContent_MakeAvailable(chiavdf)
 
@@ -63,7 +64,7 @@ ExternalProject_Add(GMP
     CONFIGURE_COMMAND CPPFLAGS=-D__USE_MINGW_ANSI_STDIO=1 ./configure --enable-cxx --enable-fat --enable-static --prefix=${GMP_PREFIX_DIR} --host=${TOOLCHAIN_PREFIX} CC_FOR_BUILD=gcc
     TEST_COMMAND ""
     BUILD_IN_SOURCE 1
-    PATCH_COMMAND git apply --reject ${CMAKE_CURRENT_SOURCE_DIR}/chiavdf-remove_boost.patch || true
+    PATCH_COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/gmp-patch-6.2.1/compat.c ${GMP_SOURCE_DIR}/compat.c && cp ${CMAKE_CURRENT_SOURCE_DIR}/src/gmp-patch-6.2.1/longlong.h ${GMP_SOURCE_DIR}/longlong.h && cp ${CMAKE_CURRENT_SOURCE_DIR}/src/gmp-patch-6.2.1/mpz/inp_raw.c ${GMP_SOURCE_DIR}/mpz/inp_raw.c
     )
 set(GMP_INCLUDE_DIR ${GMP_PREFIX_DIR}/include)
 set(GMPXX_INCLUDE_DIR ${GMP_PREFIX_DIR}/include)
