@@ -48,7 +48,7 @@ include(FetchContent)
 FetchContent_Declare(
     chiavdf
     GIT_REPOSITORY https://github.com/Chia-Network/chiavdf
-    GIT_TAG 1.0.6
+    GIT_TAG 1.0.7
     PATCH_COMMAND git apply --reject ${CMAKE_CURRENT_SOURCE_DIR}/chiavdf-remove_boost.patch || true
     )
 FetchContent_MakeAvailable(chiavdf)
