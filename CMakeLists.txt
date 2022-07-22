@@ -53,6 +53,8 @@ FetchContent_Declare(
     )
 FetchContent_MakeAvailable(chiavdf)
 
+set(UINT128_SRC ${chiavdf_SOURCE_DIR}/src/uint128_t/uint128_t.cpp)
+
 # Setup the way to retrieve GMP source
 set(GMP_PREFIX_DIR ${CMAKE_CURRENT_BINARY_DIR}/gmp)
 set(GMP_SOURCE_DIR ${GMP_PREFIX_DIR}/src)
@@ -93,14 +95,12 @@ if (BUILD_COMPILE_ASM)
     endif()
 endif()
 
-if (NOT WIN32)
-    add_definitions(-DUSE_VDF_COMPUTER=1)
-    set(ASM_FILES
-        src/unix/asm_compiled.s
-        src/unix/avx2_asm_compiled.s
-        src/unix/avx512_asm_compiled.s
-        )
-endif()
+add_definitions(-DUSE_VDF_COMPUTER=1)
+set(ASM_FILES
+    src/unix/asm_compiled.s
+    src/unix/avx2_asm_compiled.s
+    src/unix/avx512_asm_compiled.s
+    )
 set(CHIAVDF_SRC
     ${chiavdf_SOURCE_DIR}/src/refcode/lzcnt.c
     ${ASM_FILES}
@@ -111,10 +111,8 @@ set(VDF_LIB_SRCS
     )
 add_library(bhd_vdf STATIC ${VDF_LIB_SRCS})
 add_dependencies(bhd_vdf GMP)
-if (NOT WIN32)
-    target_compile_options(bhd_vdf PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG} -g)
-    target_link_options(bhd_vdf PRIVATE ${PIELINKOPTS} ${LTOFLAG})
-endif()
+target_compile_options(bhd_vdf PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG} -g)
+target_link_options(bhd_vdf PRIVATE ${PIELINKOPTS} ${LTOFLAG})
 target_include_directories(bhd_vdf PRIVATE
     ${GMP_INCLUDE_DIR}
     ${GMPXX_INCLUDE_DIR}
@@ -140,17 +138,24 @@ if (BUILD_TEST)
         )
     FetchContent_MakeAvailable(gtest)
     enable_testing()
-    set(VDF_TEST_SRCS
-        src/vdf_test.cpp
-        src/vdf_computer.cpp
-        ${CHIAVDF_SRC}
-        )
+    if (WIN32)
+        set(VDF_TEST_SRCS
+            src/vdf_test.cpp
+            src/vdf_computer.cpp
+            ${CHIAVDF_SRC}
+            ${UINT128_SRC}
+            )
+    else()
+        set(VDF_TEST_SRCS
+            src/vdf_test.cpp
+            src/vdf_computer.cpp
+            ${CHIAVDF_SRC}
+            )
+    endif()
     add_executable(vdf_test ${VDF_TEST_SRCS})
     add_dependencies(vdf_test GMP)
-    if (NOT WIN32)
-        target_compile_options(vdf_test PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG} -g)
-        target_link_options(vdf_test PRIVATE ${PIELINKOPTS} ${LTOFLAG})
-    endif()
+    target_compile_options(vdf_test PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG} -g)
+    target_link_options(vdf_test PRIVATE ${PIELINKOPTS} ${LTOFLAG})
     target_include_directories(vdf_test PRIVATE
         ${GMP_INCLUDE_DIR}
         ${GMPXX_INCLUDE_DIR}
