@@ -94,7 +94,9 @@ if (BUILD_COMPILE_ASM)
     endif()
 endif()
 
-add_definitions(-DUSE_VDF_COMPUTER=1)
+if (NOT WIN32)
+    add_definitions(-DUSE_VDF_COMPUTER=1)
+endif()
 set(ASM_FILES
     src/unix/asm_compiled.s
     src/unix/avx2_asm_compiled.s
