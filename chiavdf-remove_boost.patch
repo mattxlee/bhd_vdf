@@ -1,3 +1,75 @@
+diff --git a/src/alloc.hpp b/src/alloc.hpp
+index a53d9f0..50d3c47 100644
+--- a/src/alloc.hpp
++++ b/src/alloc.hpp
+@@ -6,7 +6,7 @@
+ inline void* mp_alloc_func(size_t new_bytes)
+ {
+     new_bytes = ((new_bytes + 8) + 15) & ~15;
+-#if defined _MSC_VER
++#if defined _MSC_VER || defined _WIN32
+     uint8_t* ret = static_cast<uint8_t*>(_aligned_malloc(new_bytes, 16));
+ #else
+     void* ptr = nullptr;
+@@ -20,7 +20,7 @@ inline void mp_free_func(void* old_ptr, size_t) {
+     // if the old_ptr alignment is not to 16 bytes + 8 bytes offset, we did not
+     // allocate it. It's an in-place buffer and should not be freed
+     if ((std::uintptr_t(old_ptr) & 15) == 8) {
+-#if defined _MSC_VER
++#if defined _MSC_VER || defined _WIN32
+         _aligned_free(static_cast<uint8_t*>(old_ptr) - 8);
+ #else
+         std::free(static_cast<uint8_t*>(old_ptr) - 8);
+diff --git a/src/gpu_integer.h b/src/gpu_integer.h
+index ea18493..5bc2e73 100644
+--- a/src/gpu_integer.h
++++ b/src/gpu_integer.h
+@@ -5,7 +5,7 @@ template<class int_type> int_type add_carry(int_type a, int_type b, int carry_in
+     assert(carry_in==0 || carry_in==1);
+     uint128 res=uint128(a) + uint128(b) + uint128(carry_in);
+ 
+-    carry_out=int(res >> (sizeof(int_type)*8));
++    carry_out=uint32(res >> (sizeof(int_type)*8));
+     assert(carry_out==0 || carry_out==1);
+ 
+     return int_type(res);
+@@ -15,7 +15,7 @@ template<class int_type> int_type sub_carry(int_type a, int_type b, int carry_in
+     assert(carry_in==0 || carry_in==1);
+     uint128 res=uint128(a) - uint128(b) - uint128(carry_in);
+ 
+-    carry_out=int(res >> (sizeof(int_type)*8)) & 1;
++    carry_out=uint32(res >> (sizeof(int_type)*8)) & 1;
+     assert(carry_out==0 || carry_out==1);
+ 
+     return int_type(res);
+diff --git a/src/include.h b/src/include.h
+index 63be0ae..ed31402 100644
+--- a/src/include.h
++++ b/src/include.h
+@@ -27,6 +27,8 @@ typedef __int128 int128;
+ #define USED __attribute__((used))
+ #else
+ #include "uint128_t/uint128_t.h"
++using int128 = uint128_t;
++using uint128 = uint128_t;
+ #define USED
+ #endif
+ #include <cassert>
+diff --git a/src/threading.h b/src/threading.h
+index 50d4b49..64761b5 100644
+--- a/src/threading.h
++++ b/src/threading.h
+@@ -7,8 +7,8 @@
+ //mp_limb_t is an unsigned integer
+ static_assert(sizeof(mp_limb_t)==8, "");
+ 
+-static_assert(sizeof(unsigned long int)==8, "");
+-static_assert(sizeof(long int)==8, "");
++// static_assert(sizeof(unsigned long int)==8, "");
++// static_assert(sizeof(long int)==8, "");
+ 
+ static uint64 get_time_cycles() {
+     // Returns the time in EDX:EAX.
 diff --git a/src/vdf.h b/src/vdf.h
 index dec959d..dda778f 100644
 --- a/src/vdf.h
