@@ -104,18 +104,10 @@ set(CHIAVDF_SRC
     ${chiavdf_SOURCE_DIR}/src/refcode/lzcnt.c
     ${ASM_FILES}
     )
-if (WIN32)
-    set(VDF_LIB_SRCS
-        src/vdf_computer.cpp
-        ${CHIAVDF_SRC}
-        ${UINT128_SRC}
-        )
-else()
-    set(VDF_LIB_SRCS
-        src/vdf_computer.cpp
-        ${CHIAVDF_SRC}
-        )
-endif()
+set(VDF_LIB_SRCS
+    src/vdf_computer.cpp
+    ${CHIAVDF_SRC}
+    )
 add_library(bhd_vdf STATIC ${VDF_LIB_SRCS})
 add_dependencies(bhd_vdf GMP)
 target_compile_options(bhd_vdf PRIVATE ${PIEFLAG} ${OPTIMIZEFLAGS} ${VISIBILITY_HIDDEN_FLAG} -g)
