@@ -58,18 +58,18 @@ set(GMP_PREFIX_DIR ${CMAKE_CURRENT_BINARY_DIR}/gmp)
 set(GMP_SOURCE_DIR ${GMP_PREFIX_DIR}/src)
 include(ExternalProject)
 ExternalProject_Add(GMP
-    URL https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz
-    URL_HASH SHA256=2c7f4f0d370801b2849c48c9ef3f59553b5f1d3791d070cffb04599f9fc67b41
+    URL https://github.com/wbhart/mpir/archive/refs/tags/mpir-3.0.0.tar.gz
+    URL_HASH SHA256=86a5039badc3e6738219a262873a1db5513405e15ece9527b718fcd0fac09bb2
     SOURCE_DIR "${GMP_SOURCE_DIR}"
-    CONFIGURE_COMMAND CPPFLAGS=-D__USE_MINGW_ANSI_STDIO=1 ./configure --enable-cxx --enable-fat --enable-static --prefix=${GMP_PREFIX_DIR} --host=${TOOLCHAIN_PREFIX} CC_FOR_BUILD=gcc
+    CONFIGURE_COMMAND ./autogen.sh && ./configure --enable-shared=no --enable-static=yes --enable-cxx --prefix=${GMP_PREFIX_DIR} --host=${TOOLCHAIN_PREFIX} CC_FOR_BUILD=gcc
     TEST_COMMAND ""
     BUILD_IN_SOURCE 1
-    PATCH_COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/gmp-patch-6.2.1/compat.c ${GMP_SOURCE_DIR}/compat.c && cp ${CMAKE_CURRENT_SOURCE_DIR}/src/gmp-patch-6.2.1/longlong.h ${GMP_SOURCE_DIR}/longlong.h && cp ${CMAKE_CURRENT_SOURCE_DIR}/src/gmp-patch-6.2.1/mpz/inp_raw.c ${GMP_SOURCE_DIR}/mpz/inp_raw.c
+    INSTALL_COMMAND make install && ln -f -s ${GMP_PREFIX_DIR}/include/mpir.h ${GMP_PREFIX_DIR}/include/gmp.h && ln -f -s ${GMP_PREFIX_DIR}/include/mpirxx.h ${GMP_PREFIX_DIR}/include/gmpxx.h
     )
 set(GMP_INCLUDE_DIR ${GMP_PREFIX_DIR}/include)
 set(GMPXX_INCLUDE_DIR ${GMP_PREFIX_DIR}/include)
-set(GMP_LIBRARIES ${GMP_PREFIX_DIR}/lib/libgmp.a)
-set(GMPXX_LIBRARIES ${GMP_PREFIX_DIR}/lib/libgmpxx.a)
+set(GMP_LIBRARIES ${GMP_PREFIX_DIR}/lib/libmpir.a)
+set(GMPXX_LIBRARIES ${GMP_PREFIX_DIR}/lib/libmpirxx.a)
 
 find_package(Threads)
 
