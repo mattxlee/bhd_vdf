@@ -57,8 +57,6 @@ Bytes GetDefaultForm();
 
 int FORM_SIZE();
 
-#if defined(USE_VDF_COMPUTER)
-
 class Computer {
     // Members to initialize the object
     Bytes initial_form_;
@@ -68,6 +66,7 @@ class Computer {
     // Results
     uint64_t iters_{0};
     types::Proof proof_;
+    std::atomic_bool stopped_;
 
 public:
     static void InitializeComputer();
@@ -78,7 +77,7 @@ public:
 
     ~Computer();
 
-    void Run(uint64_t iters, std::atomic_bool& stop);
+    void Run(uint64_t iters);
 
     void SetStop(bool stopped);
 
@@ -92,5 +91,3 @@ public:
 #endif
 
 }  // namespace vdf
-
-#endif

@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-#if defined(USE_VDF_COMPUTER)
+#if !defined(_WIN32)
 #include "vdf.h"
 
 int gcd_base_bits = 50;
@@ -89,8 +89,6 @@ Bytes GetDefaultForm() {
 
 }  // namespace utils
 
-#if defined(USE_VDF_COMPUTER)
-
 void CreateAndWriteProofOneWeso(
     uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso, std::atomic<bool>& stopped, types::Proof& out) {
     Proof proof = ProveOneWesolowski(iters, D, f, weso, stopped);
@@ -119,7 +117,12 @@ Computer::Computer(types::Integer D, Bytes initial_form) : D_(std::move(D)), ini
 
 Computer::~Computer() {}
 
-void Computer::Run(uint64_t iter, std::atomic_bool& stop) {
+void Computer::Run(uint64_t iter) {
+    stopped_ = false; // reset flag `stop`
+#if defined(_WIN32)
+    while (!stopped_)
+        ;
+#else
     try {
         std::lock_guard<std::mutex> __lock_guard(m_);
 
@@ -136,11 +139,10 @@ void Computer::Run(uint64_t iter, std::atomic_bool& stop) {
         print("form initialized");
         std::unique_ptr<OneWesolowskiCallback> weso(new OneWesolowskiCallback(D, f, iter));
         FastStorage* fast_storage = NULL;
-        stop = false;
         // Starting the calculation
-        std::thread vdf_worker(repeated_square, f, std::ref(D), std::ref(L), weso.get(), fast_storage, std::ref(stop));
+        std::thread vdf_worker(repeated_square, f, std::ref(D), std::ref(L), weso.get(), fast_storage, std::ref(stopped_));
         std::thread th_prover(
-            CreateAndWriteProofOneWeso, iter, std::ref(D), f, weso.get(), std::ref(stop), std::ref(proof_));
+            CreateAndWriteProofOneWeso, iter, std::ref(D), f, weso.get(), std::ref(stopped_), std::ref(proof_));
         iters_ = iter;  // Assign the number of iterations
         // Calculation is finished
         vdf_worker.join();
@@ -149,12 +151,11 @@ void Computer::Run(uint64_t iter, std::atomic_bool& stop) {
     } catch (std::exception& e) {
         print("run error: ", to_string(e.what()));
     }
-}
-
-void Computer::SetStop(bool stopped) { stopped = stopped; }
-
-void Computer::Join() { m_.lock(); }
-
 #endif
+    }
+
+    void Computer::SetStop(bool stopped) { stopped_ = stopped; }
+
+    void Computer::Join() { m_.lock(); }
 
 }  // namespace vdf

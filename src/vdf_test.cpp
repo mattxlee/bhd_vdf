@@ -7,10 +7,8 @@
 
 // The initial form string is copied from chia-blockchain
 char const* initial_form_str =
-    "0100a27310baa44da5e1357dfd895f260dfa465d16f0f1fbf796e6f2a0df39c5dcbdca2192"
-    "a6c2def98dc348d3730c416b0b5aaa8a99"
-    "37177b15467694eb5cebac1c1574ae892501a265f62a85c99cfd5b7cb59d31567bfa2e931d"
-    "c1de8e234da9050100";
+    "0100a27310baa44da5e1357dfd895f260dfa465d16f0f1fbf796e6f2a0df39c5dcbdca2192a6c2def98dc348d3730c416b0b5aaa8a9937177b"
+    "15467694eb5cebac1c1574ae892501a265f62a85c99cfd5b7cb59d31567bfa2e931dc1de8e234da9050100";
 
 // the number of iterations we want to run
 uint64_t iters{10 * 1024};
@@ -82,7 +80,7 @@ TEST(VDF, VerifyVdfProofOnly) {
     EXPECT_TRUE(vdf::utils::VerifyProof(D, proof_data, VDF_ITERS));
 }
 
-#if defined(USE_VDF_COMPUTER)
+#if !defined(_WIN32)
 
 namespace utils {
 
@@ -117,8 +115,7 @@ TEST(VDF, CalcVdfProofOne) {
     auto D = vdf::utils::CreateDiscriminant(challenge);
     vdf::Computer computer(D);
 
-    std::atomic_bool stop_flag;
-    computer.Run(VDF_ITERS, stop_flag);
+    computer.Run(VDF_ITERS);
 
     auto proof = computer.GetProof();
 
@@ -138,8 +135,7 @@ TEST(VDF, VerifyWithGenesisAndNext) {
     auto D = vdf::utils::CreateDiscriminant(challenge);
     vdf::Computer computer(D);
 
-    std::atomic_bool stop_flag;
-    computer.Run(iters, stop_flag);
+    computer.Run(iters);
 
     vdf::types::Proof proof = computer.GetProof();
     auto proof_data = vdf::utils::SerializeProof(proof);
@@ -149,7 +145,7 @@ TEST(VDF, VerifyWithGenesisAndNext) {
 
     vdf::Computer computer2(D, proof.y);
 
-    computer2.Run(iters, stop_flag);
+    computer2.Run(iters);
 
     vdf::types::Proof proof2 = computer2.GetProof();
     auto proof2_data = vdf::utils::SerializeProof(proof2);
@@ -158,7 +154,7 @@ TEST(VDF, VerifyWithGenesisAndNext) {
 
     vdf::Computer computer3(D, proof2.y);
 
-    computer3.Run(iters, stop_flag);
+    computer3.Run(iters);
 
     auto proof3 = computer3.GetProof();
     auto proof3_data = vdf::utils::SerializeProof(proof3);

@@ -94,9 +94,6 @@ if (BUILD_COMPILE_ASM)
     endif()
 endif()
 
-if (NOT WIN32)
-    add_definitions(-DUSE_VDF_COMPUTER=1)
-endif()
 set(ASM_FILES
     src/unix/asm_compiled.s
     src/unix/avx2_asm_compiled.s
@@ -163,5 +160,5 @@ if (BUILD_TEST)
         ${chiavdf_SOURCE_DIR}/src
         )
     target_link_libraries(vdf_test PRIVATE GTest::gtest GTest::gtest_main ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
-    add_test(vdf_test COMMAND vdf_test)
+    add_test(vdf_test ${CMAKE_CURRENT_BINARY_DIR}/vdf_test)
 endif(BUILD_TEST)
