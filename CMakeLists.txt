@@ -10,7 +10,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-enable_language(ASM)
+enable_language(C CXX ASM)
 
 option(BUILD_COMPILE_ASM "Build compile_asm and use it to generate .s files" OFF)
 option(GENERATE_ASM_FILES "Generate .s files by using compile_asm, affect only when BUILD_COMPILE_ASM is ON" OFF)
