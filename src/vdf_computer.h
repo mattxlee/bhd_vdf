@@ -88,6 +88,6 @@ public:
     types::Proof const& GetProof() const { return proof_; }
 };
 
-#endif
-
 }  // namespace vdf
+
+#endif
