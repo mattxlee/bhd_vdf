@@ -89,6 +89,7 @@ Bytes GetDefaultForm() {
 
 }  // namespace utils
 
+#if !defined(_WIN32)
 void CreateAndWriteProofOneWeso(
     uint64_t iters, integer& D, form f, OneWesolowskiCallback* weso, std::atomic<bool>& stopped, types::Proof& out) {
     Proof proof = ProveOneWesolowski(iters, D, f, weso, stopped);
@@ -100,15 +101,18 @@ void CreateAndWriteProofOneWeso(
     out.witness_type = proof.witness_type;
     stopped = true;
 }
+#endif
 
 int FORM_SIZE() { return BQFC_FORM_SIZE; }
 
 void Computer::InitializeComputer() {
+#if !defined(_WIN32)
     init_gmp();
     if (hasAVX2()) {
         gcd_base_bits = 63;
         gcd_128_max_iter = 2;
     }
+#endif
 }
 
 Computer::Computer(types::Integer D) : D_(std::move(D)) {}
@@ -119,10 +123,7 @@ Computer::~Computer() {}
 
 void Computer::Run(uint64_t iter) {
     stopped_ = false; // reset flag `stop`
-#if defined(_WIN32)
-    while (!stopped_)
-        ;
-#else
+#if !defined(_WIN32)
     try {
         std::lock_guard<std::mutex> __lock_guard(m_);
 
@@ -151,6 +152,9 @@ void Computer::Run(uint64_t iter) {
     } catch (std::exception& e) {
         print("run error: ", to_string(e.what()));
     }
+#else
+    while (!stopped_)
+        ;
 #endif
     }
 
